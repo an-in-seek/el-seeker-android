@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ElSeeker</string>
+    <string name="back_press_exit">뒤로가기를 한 번 더 누르면 종료됩니다</string>
+    <string name="retry">다시 시도</string>
+    <string name="error_title">연결할 수 없습니다</string>
+    <string name="error_message">서버에 연결하는 중 문제가 발생했습니다.\n잠시 후 다시 시도해주세요.</string>
+    <string name="offline_title">네트워크 연결 없음</string>
+    <string name="offline_message">인터넷 연결을 확인해주세요.\nWi-Fi 또는 모바일 데이터를 켜주세요.</string>
+</resources>
