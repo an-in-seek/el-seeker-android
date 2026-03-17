@@ -1,6 +1,8 @@
 package com.elseeker.android.webview
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
@@ -43,6 +45,11 @@ class ElSeekerWebViewClient(
             isDomainOrSubdomain(host, "accounts.google.com") -> {
                 onOAuthStartedInCustomTab()
                 openInCustomTab(targetUri)
+            }
+
+            // YouTube -> 앱 Intent (PiP, 백그라운드 재생 지원)
+            isDomainOrSubdomain(host, "youtube.com") || isDomainOrSubdomain(host, "youtu.be") -> {
+                openExternalApp(targetUri)
             }
 
             // 외부 링크 -> Custom Tabs (앱 내 브라우징 UX)
@@ -92,7 +99,28 @@ class ElSeekerWebViewClient(
 
     private fun openInCustomTab(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase()
-        if (scheme == "http" || scheme == "https") {
+        when (scheme) {
+            "http", "https" -> CustomTabsHelper.launch(context, uri)
+            "intent" -> {
+                try {
+                    val intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME)
+                    context.startActivity(intent)
+                } catch (_: Exception) { /* 처리 불가 intent URI 무시 */ }
+            }
+            else -> {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                } catch (_: ActivityNotFoundException) { /* 처리 앱 없음 */ }
+            }
+        }
+        return true
+    }
+
+    private fun openExternalApp(uri: Uri): Boolean {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (_: ActivityNotFoundException) {
+            // 앱이 없으면 Custom Tabs로 fallback
             CustomTabsHelper.launch(context, uri)
         }
         return true
