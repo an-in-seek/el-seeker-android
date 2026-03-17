@@ -14,6 +14,14 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        // TODO: local.properties 또는 secrets 파일로 이동
+        val kakaoAppKey = "YOUR_KAKAO_APP_KEY"
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"YOUR_GOOGLE_WEB_CLIENT_ID\"")
+        buildConfigField("String", "KAKAO_APP_KEY", "\"$kakaoAppKey\"")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"YOUR_NAVER_CLIENT_ID\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"YOUR_NAVER_CLIENT_SECRET\"")
+        manifestPlaceholders["KAKAO_APP_KEY"] = kakaoAppKey
     }
 
     buildTypes {
@@ -61,8 +69,12 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.browser)
+    implementation(libs.androidx.security.crypto)
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
+    implementation(libs.play.services.auth)
+    implementation(libs.kakao.sdk.user)
+    implementation(libs.naver.sdk.oauth)
 
     debugImplementation(libs.androidx.ui.tooling)
 }

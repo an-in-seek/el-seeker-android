@@ -3,9 +3,15 @@ package com.elseeker.android
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.elseeker.android.auth.AuthApi
+import com.elseeker.android.auth.CookieHelper
+import com.elseeker.android.auth.TokenManager
 import com.elseeker.android.network.NetworkMonitor
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -17,9 +23,15 @@ sealed interface UiState {
     data class Error(val failedUrl: String?, val errorCode: Int?) : UiState
 }
 
+sealed interface LoginEvent {
+    data object Success : LoginEvent
+    data class Error(val message: String) : LoginEvent
+}
+
 class ElSeekerViewModel(application: Application) : AndroidViewModel(application) {
 
     private val networkMonitor = NetworkMonitor(application, viewModelScope)
+    private val tokenManager = TokenManager(application)
     private var currentUrl: String = BuildConfig.BASE_URL
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
@@ -27,9 +39,15 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
 
     val isConnected: StateFlow<Boolean> = networkMonitor.isConnected
 
+    private val _loginEvent = MutableSharedFlow<LoginEvent>()
+    val loginEvent: SharedFlow<LoginEvent> = _loginEvent.asSharedFlow()
+
     private var pendingUrl: String? = null
 
     init {
+        // 앱 시작 시 저장된 토큰이 있으면 WebView 쿠키에 설정
+        restoreAuthCookies()
+
         viewModelScope.launch {
             networkMonitor.isConnected.collect { connected ->
                 _uiState.update { current ->
@@ -67,6 +85,22 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun handleSocialLogin(provider: String, socialToken: String) {
+        viewModelScope.launch {
+            val result = AuthApi.socialLogin(provider, socialToken)
+            result.fold(
+                onSuccess = { tokenResponse ->
+                    tokenManager.saveTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
+                    CookieHelper.setAuthCookies(tokenResponse.accessToken, tokenResponse.refreshToken)
+                    _loginEvent.emit(LoginEvent.Success)
+                },
+                onFailure = { error ->
+                    _loginEvent.emit(LoginEvent.Error(error.message ?: "로그인에 실패했습니다."))
+                }
+            )
+        }
+    }
+
     fun setError(failedUrl: String?, errorCode: Int?) {
         pendingUrl = failedUrl ?: currentUrl
         _uiState.update { UiState.Error(failedUrl, errorCode) }
@@ -92,5 +126,13 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
             currentUrl = url
         }
         pendingUrl = null
+    }
+
+    private fun restoreAuthCookies() {
+        val accessToken = tokenManager.getAccessToken()
+        val refreshToken = tokenManager.getRefreshToken()
+        if (accessToken != null && refreshToken != null) {
+            CookieHelper.setAuthCookies(accessToken, refreshToken)
+        }
     }
 }

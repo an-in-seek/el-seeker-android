@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.webkit.CookieManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -19,7 +18,7 @@ class ElSeekerWebViewClient(
     private val onPageFinished: (String?) -> Unit,
     private val onError: (failedUrl: String?, errorCode: Int?) -> Unit,
     private val onSslError: () -> Unit,
-    private val onOAuthStartedInCustomTab: () -> Unit = {}
+    private val onSocialLoginRequested: (provider: String) -> Unit = {}
 ) : WebViewClient() {
 
     private val baseUri: Uri = Uri.parse(BuildConfig.BASE_URL)
@@ -31,22 +30,20 @@ class ElSeekerWebViewClient(
         val targetUri = request.url
         val host = targetUri.host.orEmpty()
 
-        // Internal pages must match the configured origin exactly.
-        if (isInternalUri(targetUri)) return false
+        if (isInternalUri(targetUri)) {
+            // OAuth 시작 URL 인터셉트 → 네이티브 SDK로 전환
+            val path = targetUri.path.orEmpty()
+            if (path.startsWith("/oauth2/authorization/")) {
+                val provider = path.substringAfterLast("/")
+                if (provider in listOf("google", "kakao", "naver")) {
+                    onSocialLoginRequested(provider)
+                    return true
+                }
+            }
+            return false
+        }
 
         return when {
-            // Kakao OAuth -> WebView (허용됨, WebView 쿠키 유지)
-            isDomainOrSubdomain(host, "kakao.com") -> false
-
-            // Naver OAuth -> WebView (허용됨, WebView 쿠키 유지)
-            isDomainOrSubdomain(host, "nid.naver.com") -> false
-
-            // Google OAuth -> Custom Tabs (Google 정책상 WebView 차단 대비)
-            isDomainOrSubdomain(host, "accounts.google.com") -> {
-                onOAuthStartedInCustomTab()
-                openInCustomTab(targetUri)
-            }
-
             // YouTube -> 앱 Intent (PiP, 백그라운드 재생 지원)
             isDomainOrSubdomain(host, "youtube.com") || isDomainOrSubdomain(host, "youtu.be") -> {
                 openExternalApp(targetUri)
@@ -59,16 +56,6 @@ class ElSeekerWebViewClient(
 
     override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
         super.onPageStarted(view, url, favicon)
-
-        // Toggle third-party cookies for OAuth domains only
-        view?.let { wv ->
-            val host = url?.let { Uri.parse(it).host }.orEmpty()
-            val isOAuthDomain = isDomainOrSubdomain(host, "accounts.google.com")
-                    || isDomainOrSubdomain(host, "nid.naver.com")
-                    || isDomainOrSubdomain(host, "kakao.com")
-            CookieManager.getInstance().setAcceptThirdPartyCookies(wv, isOAuthDomain)
-        }
-
         onPageStarted()
     }
 
@@ -82,9 +69,7 @@ class ElSeekerWebViewClient(
         request: WebResourceRequest,
         error: WebResourceError
     ) {
-        // Ignore sub-resource errors
         if (!request.isForMainFrame) return
-
         onError(request.url.toString(), error.errorCode)
     }
 
@@ -93,7 +78,7 @@ class ElSeekerWebViewClient(
         handler: SslErrorHandler,
         error: SslError
     ) {
-        handler.cancel() // Never proceed on SSL errors
+        handler.cancel()
         onSslError()
     }
 
@@ -105,7 +90,7 @@ class ElSeekerWebViewClient(
                 try {
                     val intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME)
                     context.startActivity(intent)
-                } catch (_: Exception) { /* 처리 불가 intent URI 무시 */ }
+                } catch (_: Exception) { /* intent URI 처리 불가 */ }
             }
             else -> {
                 try {
@@ -120,7 +105,6 @@ class ElSeekerWebViewClient(
         try {
             context.startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (_: ActivityNotFoundException) {
-            // 앱이 없으면 Custom Tabs로 fallback
             CustomTabsHelper.launch(context, uri)
         }
         return true
