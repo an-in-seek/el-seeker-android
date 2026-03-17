@@ -88,7 +88,7 @@ class ElSeekerActivity : ComponentActivity() {
     }
 
     private fun loginWithGoogle() {
-        Log.d(TAG, "Google login started - clientId: ${BuildConfig.GOOGLE_WEB_CLIENT_ID.take(8)}***")
+        Log.i(TAG, "Google login started - clientId: ${BuildConfig.GOOGLE_WEB_CLIENT_ID.take(8)}***")
         val googleIdOption = GetGoogleIdOption.Builder()
             .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
             .setFilterByAuthorizedAccounts(false)
@@ -105,10 +105,10 @@ class ElSeekerActivity : ComponentActivity() {
                     request = request
                 )
                 val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
-                Log.d(TAG, "Google login success - idToken present: ${googleIdTokenCredential.idToken.isNotEmpty()}")
+                Log.i(TAG, "Google login success - idToken present: ${googleIdTokenCredential.idToken.isNotEmpty()}")
                 viewModel.handleSocialLogin("google", googleIdTokenCredential.idToken)
             } catch (_: GetCredentialCancellationException) {
-                Log.d(TAG, "Google login cancelled by user")
+                Log.i(TAG, "Google login cancelled by user")
             } catch (e: Exception) {
                 Log.e(TAG, "Google sign-in failed: ${e.javaClass.simpleName} - ${e.message}", e)
                 Toast.makeText(this@ElSeekerActivity, "Google 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -117,28 +117,28 @@ class ElSeekerActivity : ComponentActivity() {
     }
 
     private fun loginWithKakao() {
-        Log.d(TAG, "Kakao login started")
+        Log.i(TAG, "Kakao login started")
         UserApiClient.instance.loginWithKakaoAccount(this) { token, error ->
             if (error != null) {
                 if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
-                    Log.d(TAG, "Kakao login cancelled by user")
+                    Log.i(TAG, "Kakao login cancelled by user")
                     return@loginWithKakaoAccount
                 }
                 Log.e(TAG, "Kakao login failed: ${error.javaClass.simpleName} - ${error.message}", error)
                 Toast.makeText(this, "카카오 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
             } else if (token != null) {
-                Log.d(TAG, "Kakao login success - accessToken present: ${token.accessToken.isNotEmpty()}")
+                Log.i(TAG, "Kakao login success - accessToken present: ${token.accessToken.isNotEmpty()}")
                 viewModel.handleSocialLogin("kakao", token.accessToken)
             }
         }
     }
 
     private fun loginWithNaver() {
-        Log.d(TAG, "Naver login started - clientId: ${BuildConfig.NAVER_CLIENT_ID.take(4)}***, initialized: ${NaverIdLoginSDK.getState()}")
+        Log.i(TAG, "Naver login started - clientId: ${BuildConfig.NAVER_CLIENT_ID.take(4)}***, initialized: ${NaverIdLoginSDK.getState()}")
         NaverIdLoginSDK.authenticate(this, object : OAuthLoginCallback {
             override fun onSuccess() {
                 val accessToken = NaverIdLoginSDK.getAccessToken()
-                Log.d(TAG, "Naver login success - token present: ${accessToken != null}")
+                Log.i(TAG, "Naver login success - token present: ${accessToken != null}")
                 if (accessToken != null) {
                     viewModel.handleSocialLogin("naver", accessToken)
                 } else {

@@ -91,13 +91,13 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
     fun handleSocialLogin(provider: String, socialToken: String) {
         if (_isLoggingIn.value) return
         _isLoggingIn.value = true
-        Log.d(TAG, "Social login API call - provider: $provider, tokenLength: ${socialToken.length}")
+        Log.i(TAG, "Social login API call - provider: $provider, tokenLength: ${socialToken.length}")
         viewModelScope.launch {
             val result = AuthApi.socialLogin(provider, socialToken)
             _isLoggingIn.value = false
             result.fold(
                 onSuccess = { tokenResponse ->
-                    Log.d(TAG, "Social login API success - accessToken length: ${tokenResponse.accessToken.length}")
+                    Log.i(TAG, "Social login API success - accessToken length: ${tokenResponse.accessToken.length}")
                     tokenManager.saveTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
                     CookieHelper.setAuthCookies(tokenResponse.accessToken, tokenResponse.refreshToken)
                     _loginEvent.send(LoginEvent.Success)

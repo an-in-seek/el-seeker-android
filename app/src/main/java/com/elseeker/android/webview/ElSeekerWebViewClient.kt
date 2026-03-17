@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -21,6 +22,10 @@ class ElSeekerWebViewClient(
     private val onSocialLoginRequested: (provider: String) -> Unit = {}
 ) : WebViewClient() {
 
+    companion object {
+        private const val TAG = "ElSeekerAuth"
+    }
+
     private val baseUri: Uri = Uri.parse(BuildConfig.BASE_URL)
 
     override fun shouldOverrideUrlLoading(
@@ -30,11 +35,14 @@ class ElSeekerWebViewClient(
         val targetUri = request.url
         val host = targetUri.host.orEmpty()
 
+        Log.i(TAG, "shouldOverrideUrlLoading: $targetUri (internal: ${isInternalUri(targetUri)})")
+
         if (isInternalUri(targetUri)) {
-            // OAuth 시작 URL 인터셉트 → 네이티브 SDK로 전환
             val path = targetUri.path.orEmpty()
+            Log.i(TAG, "Internal URL path: $path")
             if (path.startsWith("/oauth2/authorization/")) {
                 val provider = path.substringAfterLast("/")
+                Log.i(TAG, "OAuth intercept -> provider: $provider")
                 if (provider in listOf("google", "kakao", "naver")) {
                     onSocialLoginRequested(provider)
                     return true
