@@ -10,13 +10,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.lifecycle.lifecycleScope
 import com.elseeker.android.ui.screen.MainScreen
 import com.elseeker.android.ui.theme.ElSeekerTheme
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.AppUpdateType
@@ -33,33 +35,11 @@ class ElSeekerActivity : ComponentActivity() {
 
     private val viewModel: ElSeekerViewModel by viewModels()
     private var backPressedOnce = false
-
-    private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var credentialManager: CredentialManager
 
     private val updateLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { /* Update flow result - no action needed for flexible updates */ }
-
-    private val googleSignInLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        try {
-            val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                .getResult(ApiException::class.java)
-            val idToken = account.idToken
-            if (idToken != null) {
-                viewModel.handleSocialLogin("google", idToken)
-            } else {
-                Toast.makeText(this, "Google 로그인 토큰을 받지 못했습니다.", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: ApiException) {
-            // 사용자가 로그인을 취소한 경우 (statusCode 12501) 무시
-            if (e.statusCode != 12501) {
-                Log.e("ElSeekerActivity", "Google sign-in failed: ${e.statusCode}", e)
-                Toast.makeText(this, "Google 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -81,7 +61,7 @@ class ElSeekerActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
-        initGoogleSignIn()
+        credentialManager = CredentialManager.create(this)
         checkForAppUpdate()
 
         setContent {
@@ -95,14 +75,6 @@ class ElSeekerActivity : ComponentActivity() {
         }
     }
 
-    private fun initGoogleSignIn() {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-            .requestEmail()
-            .build()
-        googleSignInClient = GoogleSignIn.getClient(this, gso)
-    }
-
     private fun handleSocialLogin(provider: String) {
         when (provider) {
             "google" -> loginWithGoogle()
@@ -112,16 +84,35 @@ class ElSeekerActivity : ComponentActivity() {
     }
 
     private fun loginWithGoogle() {
-        // 기존 로그인 세션을 먼저 해제하여 계정 선택 화면을 항상 표시
-        googleSignInClient.signOut().addOnCompleteListener {
-            googleSignInLauncher.launch(googleSignInClient.signInIntent)
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+            .setFilterByAuthorizedAccounts(false)
+            .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        lifecycleScope.launch {
+            try {
+                val result: GetCredentialResponse = credentialManager.getCredential(
+                    context = this@ElSeekerActivity,
+                    request = request
+                )
+                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
+                viewModel.handleSocialLogin("google", googleIdTokenCredential.idToken)
+            } catch (_: GetCredentialCancellationException) {
+                // 사용자가 로그인을 취소한 경우 무시
+            } catch (e: Exception) {
+                Log.e("ElSeekerActivity", "Google sign-in failed", e)
+                Toast.makeText(this@ElSeekerActivity, "Google 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
     private fun loginWithKakao() {
         UserApiClient.instance.loginWithKakaoAccount(this) { token, error ->
             if (error != null) {
-                // 사용자가 로그인을 취소한 경우 무시
                 if (error is ClientError && error.reason == ClientErrorCause.Cancelled) return@loginWithKakaoAccount
                 Log.e("ElSeekerActivity", "Kakao login failed", error)
                 Toast.makeText(this, "카카오 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()

@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun localProp(key: String, default: String = ""): String =
+    localProps.getProperty(key, default)
 
 android {
     namespace = "com.elseeker.android"
@@ -15,12 +25,11 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        // TODO: local.properties 또는 secrets 파일로 이동
-        val kakaoAppKey = "YOUR_KAKAO_APP_KEY"
-        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"YOUR_GOOGLE_WEB_CLIENT_ID\"")
+        val kakaoAppKey = localProp("KAKAO_APP_KEY")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProp("GOOGLE_WEB_CLIENT_ID")}\"")
         buildConfigField("String", "KAKAO_APP_KEY", "\"$kakaoAppKey\"")
-        buildConfigField("String", "NAVER_CLIENT_ID", "\"YOUR_NAVER_CLIENT_ID\"")
-        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"YOUR_NAVER_CLIENT_SECRET\"")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProp("NAVER_CLIENT_ID")}\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProp("NAVER_CLIENT_SECRET")}\"")
         manifestPlaceholders["KAKAO_APP_KEY"] = kakaoAppKey
     }
 
@@ -72,7 +81,9 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
-    implementation(libs.play.services.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.google.googleid)
     implementation(libs.kakao.sdk.user)
     implementation(libs.naver.sdk.oauth)
 
