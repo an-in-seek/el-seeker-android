@@ -1,6 +1,7 @@
 package com.elseeker.android
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.elseeker.android.auth.AuthApi
@@ -90,20 +91,27 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
     fun handleSocialLogin(provider: String, socialToken: String) {
         if (_isLoggingIn.value) return
         _isLoggingIn.value = true
+        Log.d(TAG, "Social login API call - provider: $provider, tokenLength: ${socialToken.length}")
         viewModelScope.launch {
             val result = AuthApi.socialLogin(provider, socialToken)
             _isLoggingIn.value = false
             result.fold(
                 onSuccess = { tokenResponse ->
+                    Log.d(TAG, "Social login API success - accessToken length: ${tokenResponse.accessToken.length}")
                     tokenManager.saveTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
                     CookieHelper.setAuthCookies(tokenResponse.accessToken, tokenResponse.refreshToken)
                     _loginEvent.send(LoginEvent.Success)
                 },
                 onFailure = { error ->
+                    Log.e(TAG, "Social login API failed: ${error.message}", error)
                     _loginEvent.send(LoginEvent.Error(error.message ?: "로그인에 실패했습니다."))
                 }
             )
         }
+    }
+
+    companion object {
+        private const val TAG = "ElSeekerAuth"
     }
 
     fun setError(failedUrl: String?, errorCode: Int?) {

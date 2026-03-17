@@ -33,6 +33,10 @@ import kotlinx.coroutines.launch
 
 class ElSeekerActivity : ComponentActivity() {
 
+    companion object {
+        private const val TAG = "ElSeekerAuth"
+    }
+
     private val viewModel: ElSeekerViewModel by viewModels()
     private var backPressedOnce = false
     private lateinit var credentialManager: CredentialManager
@@ -84,6 +88,7 @@ class ElSeekerActivity : ComponentActivity() {
     }
 
     private fun loginWithGoogle() {
+        Log.d(TAG, "Google login started - clientId: ${BuildConfig.GOOGLE_WEB_CLIENT_ID.take(8)}***")
         val googleIdOption = GetGoogleIdOption.Builder()
             .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
             .setFilterByAuthorizedAccounts(false)
@@ -100,32 +105,40 @@ class ElSeekerActivity : ComponentActivity() {
                     request = request
                 )
                 val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
+                Log.d(TAG, "Google login success - idToken present: ${googleIdTokenCredential.idToken.isNotEmpty()}")
                 viewModel.handleSocialLogin("google", googleIdTokenCredential.idToken)
             } catch (_: GetCredentialCancellationException) {
-                // 사용자가 로그인을 취소한 경우 무시
+                Log.d(TAG, "Google login cancelled by user")
             } catch (e: Exception) {
-                Log.e("ElSeekerActivity", "Google sign-in failed", e)
+                Log.e(TAG, "Google sign-in failed: ${e.javaClass.simpleName} - ${e.message}", e)
                 Toast.makeText(this@ElSeekerActivity, "Google 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun loginWithKakao() {
+        Log.d(TAG, "Kakao login started")
         UserApiClient.instance.loginWithKakaoAccount(this) { token, error ->
             if (error != null) {
-                if (error is ClientError && error.reason == ClientErrorCause.Cancelled) return@loginWithKakaoAccount
-                Log.e("ElSeekerActivity", "Kakao login failed", error)
+                if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
+                    Log.d(TAG, "Kakao login cancelled by user")
+                    return@loginWithKakaoAccount
+                }
+                Log.e(TAG, "Kakao login failed: ${error.javaClass.simpleName} - ${error.message}", error)
                 Toast.makeText(this, "카카오 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
             } else if (token != null) {
+                Log.d(TAG, "Kakao login success - accessToken present: ${token.accessToken.isNotEmpty()}")
                 viewModel.handleSocialLogin("kakao", token.accessToken)
             }
         }
     }
 
     private fun loginWithNaver() {
+        Log.d(TAG, "Naver login started - clientId: ${BuildConfig.NAVER_CLIENT_ID.take(4)}***, initialized: ${NaverIdLoginSDK.getState()}")
         NaverIdLoginSDK.authenticate(this, object : OAuthLoginCallback {
             override fun onSuccess() {
                 val accessToken = NaverIdLoginSDK.getAccessToken()
+                Log.d(TAG, "Naver login success - token present: ${accessToken != null}")
                 if (accessToken != null) {
                     viewModel.handleSocialLogin("naver", accessToken)
                 } else {
@@ -134,11 +147,14 @@ class ElSeekerActivity : ComponentActivity() {
             }
 
             override fun onFailure(httpStatus: Int, message: String) {
-                Log.e("ElSeekerActivity", "Naver login failed: $httpStatus $message")
+                val lastError = NaverIdLoginSDK.getLastErrorCode()
+                val lastErrorDesc = NaverIdLoginSDK.getLastErrorDescription()
+                Log.e(TAG, "Naver login failure - httpStatus: $httpStatus, message: $message, lastError: $lastError, lastErrorDesc: $lastErrorDesc")
                 Toast.makeText(this@ElSeekerActivity, "네이버 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
 
             override fun onError(errorCode: Int, message: String) {
+                Log.e(TAG, "Naver login error - errorCode: $errorCode, message: $message")
                 onFailure(errorCode, message)
             }
         })
