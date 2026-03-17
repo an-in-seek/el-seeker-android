@@ -1,8 +1,6 @@
 package com.elseeker.android.webview
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
@@ -18,7 +16,8 @@ class ElSeekerWebViewClient(
     private val onPageStarted: () -> Unit,
     private val onPageFinished: (String?) -> Unit,
     private val onError: (failedUrl: String?, errorCode: Int?) -> Unit,
-    private val onSslError: () -> Unit
+    private val onSslError: () -> Unit,
+    private val onOAuthStartedInCustomTab: () -> Unit = {}
 ) : WebViewClient() {
 
     private val baseUri: Uri = Uri.parse(BuildConfig.BASE_URL)
@@ -34,24 +33,20 @@ class ElSeekerWebViewClient(
         if (isInternalUri(targetUri)) return false
 
         return when {
-            // Kakao OAuth -> WebView
+            // Kakao OAuth -> WebView (허용됨, WebView 쿠키 유지)
             isDomainOrSubdomain(host, "kakao.com") -> false
 
-            // Naver OAuth -> WebView
+            // Naver OAuth -> WebView (허용됨, WebView 쿠키 유지)
             isDomainOrSubdomain(host, "nid.naver.com") -> false
 
-            // Google OAuth -> WebView
-            isDomainOrSubdomain(host, "accounts.google.com") -> false
-
-            // YouTube -> YouTube app or system browser
-            isDomainOrSubdomain(host, "youtube.com") || isDomainOrSubdomain(host, "youtu.be") -> {
-                openExternalUrl(targetUri)
+            // Google OAuth -> Custom Tabs (Google 정책상 WebView 차단 대비)
+            isDomainOrSubdomain(host, "accounts.google.com") -> {
+                onOAuthStartedInCustomTab()
+                openInCustomTab(targetUri)
             }
 
-            // Other external links -> system browser (http/https only)
-            else -> {
-                openExternalUrl(targetUri)
-            }
+            // 외부 링크 -> Custom Tabs (앱 내 브라우징 UX)
+            else -> openInCustomTab(targetUri)
         }
     }
 
@@ -95,14 +90,10 @@ class ElSeekerWebViewClient(
         onSslError()
     }
 
-    private fun openExternalUrl(uri: Uri): Boolean {
+    private fun openInCustomTab(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase()
         if (scheme == "http" || scheme == "https") {
-            try {
-                context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-            } catch (_: ActivityNotFoundException) {
-                // No app can handle this URL — ignore silently
-            }
+            CustomTabsHelper.launch(context, uri)
         }
         return true
     }
