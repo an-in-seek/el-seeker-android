@@ -21,6 +21,8 @@ import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.kakao.sdk.common.model.ClientError
+import com.kakao.sdk.common.model.ClientErrorCause
 import com.kakao.sdk.user.UserApiClient
 import com.navercorp.nid.NaverIdLoginSDK
 import com.navercorp.nid.oauth.OAuthLoginCallback
@@ -119,6 +121,8 @@ class ElSeekerActivity : ComponentActivity() {
     private fun loginWithKakao() {
         UserApiClient.instance.loginWithKakaoAccount(this) { token, error ->
             if (error != null) {
+                // 사용자가 로그인을 취소한 경우 무시
+                if (error is ClientError && error.reason == ClientErrorCause.Cancelled) return@loginWithKakaoAccount
                 Log.e("ElSeekerActivity", "Kakao login failed", error)
                 Toast.makeText(this, "카카오 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
             } else if (token != null) {

@@ -8,14 +8,5 @@
 # Keep BuildConfig
 -keep class com.elseeker.android.BuildConfig { *; }
 
-# Kakao SDK
--keep class com.kakao.sdk.** { *; }
--dontwarn com.kakao.sdk.**
-
-# Naver SDK
--keep class com.navercorp.nid.** { *; }
--dontwarn com.navercorp.nid.**
-
-# Google Play Services Auth
--keep class com.google.android.gms.auth.** { *; }
--keep class com.google.android.gms.common.** { *; }
+# Google Play Services Auth (consumer rules 보완)
+-keep class com.google.android.gms.auth.api.signin.** { *; }

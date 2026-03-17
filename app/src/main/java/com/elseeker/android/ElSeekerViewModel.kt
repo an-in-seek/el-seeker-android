@@ -7,12 +7,11 @@ import com.elseeker.android.auth.AuthApi
 import com.elseeker.android.auth.CookieHelper
 import com.elseeker.android.auth.TokenManager
 import com.elseeker.android.network.NetworkMonitor
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -39,8 +38,8 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
 
     val isConnected: StateFlow<Boolean> = networkMonitor.isConnected
 
-    private val _loginEvent = MutableSharedFlow<LoginEvent>()
-    val loginEvent: SharedFlow<LoginEvent> = _loginEvent.asSharedFlow()
+    private val _loginEvent = Channel<LoginEvent>(Channel.BUFFERED)
+    val loginEvent = _loginEvent.receiveAsFlow()
 
     private var pendingUrl: String? = null
 
@@ -85,17 +84,23 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private val _isLoggingIn = MutableStateFlow(false)
+    val isLoggingIn: StateFlow<Boolean> = _isLoggingIn.asStateFlow()
+
     fun handleSocialLogin(provider: String, socialToken: String) {
+        if (_isLoggingIn.value) return
+        _isLoggingIn.value = true
         viewModelScope.launch {
             val result = AuthApi.socialLogin(provider, socialToken)
+            _isLoggingIn.value = false
             result.fold(
                 onSuccess = { tokenResponse ->
                     tokenManager.saveTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
                     CookieHelper.setAuthCookies(tokenResponse.accessToken, tokenResponse.refreshToken)
-                    _loginEvent.emit(LoginEvent.Success)
+                    _loginEvent.send(LoginEvent.Success)
                 },
                 onFailure = { error ->
-                    _loginEvent.emit(LoginEvent.Error(error.message ?: "로그인에 실패했습니다."))
+                    _loginEvent.send(LoginEvent.Error(error.message ?: "로그인에 실패했습니다."))
                 }
             )
         }

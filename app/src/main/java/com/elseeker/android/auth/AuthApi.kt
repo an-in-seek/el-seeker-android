@@ -16,9 +16,10 @@ object AuthApi {
 
     suspend fun socialLogin(provider: String, token: String): Result<TokenResponse> =
         withContext(Dispatchers.IO) {
+            var conn: HttpURLConnection? = null
             try {
                 val url = URL("${BuildConfig.BASE_URL}/api/v1/auth/social-login")
-                val conn = url.openConnection() as HttpURLConnection
+                conn = url.openConnection() as HttpURLConnection
 
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json")
@@ -49,7 +50,9 @@ object AuthApi {
                     Result.failure(Exception(message))
                 }
             } catch (e: Exception) {
-                Result.failure(Exception("네트워크 오류가 발생했습니다."))
+                Result.failure(Exception("네트워크 오류가 발생했습니다.", e))
+            } finally {
+                conn?.disconnect()
             }
         }
 }
