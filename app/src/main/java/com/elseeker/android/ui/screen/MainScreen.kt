@@ -42,7 +42,7 @@ import com.elseeker.android.webview.WebViewSetup
 fun MainScreen(
     viewModel: ElSeekerViewModel,
     onBackPressed: (canGoBack: Boolean, goBack: () -> Unit) -> Unit,
-    onSocialLoginRequested: (provider: String) -> Unit
+    onSocialLoginRequested: (provider: String, isLink: Boolean) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -58,6 +58,10 @@ fun MainScreen(
         viewModel.loginEvent.collect { event ->
             when (event) {
                 is LoginEvent.Success -> webView?.reload()
+                is LoginEvent.LinkSuccess -> {
+                    Toast.makeText(context, "연동되었습니다.", Toast.LENGTH_SHORT).show()
+                    webView?.reload()
+                }
                 is LoginEvent.Error -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }

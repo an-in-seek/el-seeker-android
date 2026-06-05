@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.elseeker.android.auth.ApiException
 import com.elseeker.android.auth.AuthApi
 import com.elseeker.android.auth.CookieHelper
 import com.elseeker.android.auth.TokenManager
@@ -24,7 +25,10 @@ sealed interface UiState {
 }
 
 sealed interface LoginEvent {
+    /** 로그인 성공 — WebView를 재로드해 인증 상태 반영. */
     data object Success : LoginEvent
+    /** 연동 성공 — 토큰 변경 없이 연동 상태만 갱신. */
+    data object LinkSuccess : LoginEvent
     data class Error(val message: String) : LoginEvent
 }
 
@@ -88,25 +92,89 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
     private val _isLoggingIn = MutableStateFlow(false)
     val isLoggingIn: StateFlow<Boolean> = _isLoggingIn.asStateFlow()
 
-    fun handleSocialLogin(provider: String, socialToken: String) {
-        if (_isLoggingIn.value) return
-        _isLoggingIn.value = true
-        Log.i(TAG, "Social login API call - provider: $provider, tokenLength: ${socialToken.length}")
+    fun handleSocialLogin(provider: String, socialToken: String, isLink: Boolean) {
+        // 원자적 compare-and-set으로 동시/중복 진입 차단.
+        if (!_isLoggingIn.compareAndSet(expect = false, update = true)) return
+        Log.i(TAG, "Social ${if (isLink) "link" else "login"} API call - provider: $provider, tokenLength: ${socialToken.length}")
         viewModelScope.launch {
-            val result = AuthApi.socialLogin(provider, socialToken)
-            _isLoggingIn.value = false
-            result.fold(
-                onSuccess = { tokenResponse ->
-                    Log.i(TAG, "Social login API success - accessToken length: ${tokenResponse.accessToken.length}")
-                    tokenManager.saveTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
-                    CookieHelper.setAuthCookies(tokenResponse.accessToken, tokenResponse.refreshToken)
-                    _loginEvent.send(LoginEvent.Success)
-                },
-                onFailure = { error ->
-                    Log.e(TAG, "Social login API failed: ${error.message}", error)
-                    _loginEvent.send(LoginEvent.Error(error.message ?: "로그인에 실패했습니다."))
-                }
-            )
+            try {
+                if (isLink) linkAccount(provider, socialToken) else login(provider, socialToken)
+            } finally {
+                _isLoggingIn.value = false
+            }
+        }
+    }
+
+    private suspend fun login(provider: String, socialToken: String) {
+        AuthApi.socialLogin(provider, socialToken).fold(
+            onSuccess = { tokenResponse ->
+                Log.i(TAG, "Social login success - accessToken length: ${tokenResponse.accessToken.length}")
+                tokenManager.saveTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
+                CookieHelper.setAuthCookies(tokenResponse.accessToken, tokenResponse.refreshToken)
+                _loginEvent.send(LoginEvent.Success)
+            },
+            onFailure = { error ->
+                Log.e(TAG, "Social login failed: ${error.message}", error)
+                _loginEvent.send(LoginEvent.Error(error.message ?: "로그인에 실패했습니다."))
+            }
+        )
+    }
+
+    private suspend fun linkAccount(provider: String, socialToken: String) {
+        val accessToken = tokenManager.getAccessToken()
+        if (accessToken == null) {
+            // 비로그인 상태에서의 연동 시도 → 재로그인 유도
+            _loginEvent.send(LoginEvent.Error("로그인이 필요합니다. 다시 로그인해 주세요."))
+            return
+        }
+
+        var result = AuthApi.linkSocialAccount(provider, socialToken, accessToken)
+
+        // accessToken 만료(401) → reissue 후 1회 재시도
+        if ((result.exceptionOrNull() as? ApiException)?.status == 401) {
+            Log.i(TAG, "Link got 401 - attempting token reissue")
+            val refreshed = reissueAccessToken()
+            if (refreshed == null) {
+                _loginEvent.send(LoginEvent.Error("세션이 만료되었습니다. 다시 로그인해 주세요."))
+                return
+            }
+            result = AuthApi.linkSocialAccount(provider, socialToken, refreshed)
+        }
+
+        result.fold(
+            onSuccess = {
+                Log.i(TAG, "Social link success - provider: $provider")
+                _loginEvent.send(LoginEvent.LinkSuccess)
+            },
+            onFailure = { error ->
+                Log.e(TAG, "Social link failed: ${error.message}", error)
+                _loginEvent.send(LoginEvent.Error(linkErrorMessage(error)))
+            }
+        )
+    }
+
+    /** 저장된 refreshToken으로 토큰 재발급. 성공 시 신규 accessToken 반환, 실패 시 null. */
+    private suspend fun reissueAccessToken(): String? {
+        val refreshToken = tokenManager.getRefreshToken() ?: return null
+        return AuthApi.reissue(refreshToken).fold(
+            onSuccess = { tokenResponse ->
+                tokenManager.saveTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
+                CookieHelper.setAuthCookies(tokenResponse.accessToken, tokenResponse.refreshToken)
+                tokenResponse.accessToken
+            },
+            onFailure = {
+                Log.e(TAG, "Token reissue failed: ${it.message}")
+                null
+            }
+        )
+    }
+
+    private fun linkErrorMessage(error: Throwable): String {
+        val api = error as? ApiException
+        return when {
+            api?.code == "OAUTH_ACCOUNT_ALREADY_LINKED" -> "이미 다른 계정에 연결된 소셜 계정입니다."
+            api?.status == 401 -> "세션이 만료되었습니다. 다시 로그인해 주세요."
+            else -> error.message ?: "연동에 실패했습니다."
         }
     }
 

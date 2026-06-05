@@ -19,7 +19,7 @@ class ElSeekerWebViewClient(
     private val onPageFinished: (String?) -> Unit,
     private val onError: (failedUrl: String?, errorCode: Int?) -> Unit,
     private val onSslError: () -> Unit,
-    private val onSocialLoginRequested: (provider: String) -> Unit = {}
+    private val onSocialLoginRequested: (provider: String, isLink: Boolean) -> Unit = { _, _ -> }
 ) : WebViewClient() {
 
     companion object {
@@ -42,9 +42,11 @@ class ElSeekerWebViewClient(
             Log.i(TAG, "Internal URL path: $path")
             if (path.startsWith("/oauth2/authorization/")) {
                 val provider = path.substringAfterLast("/")
-                Log.i(TAG, "OAuth intercept -> provider: $provider")
+                // 마이페이지 연동 버튼은 ?link=true 를 실어 보낸다 (웹과 동일 신호).
+                val isLink = targetUri.getQueryParameter("link") == "true"
+                Log.i(TAG, "OAuth intercept -> provider: $provider, link: $isLink")
                 if (provider in listOf("google", "kakao", "naver")) {
-                    onSocialLoginRequested(provider)
+                    onSocialLoginRequested(provider, isLink)
                     return true
                 }
             }
