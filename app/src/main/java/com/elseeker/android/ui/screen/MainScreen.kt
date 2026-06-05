@@ -8,6 +8,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,7 +81,15 @@ fun MainScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+    // 시스템 바(상태바/내비바) 배경: OS 다크 테마면 검정, 라이트면 흰색.
+    // background()를 systemBarsPadding() 앞에 둬야 바 뒤 영역까지 칠해진다.
+    val systemBarBackground = if (isSystemInDarkTheme()) Color.Black else Color.White
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(systemBarBackground)
+            .systemBarsPadding()
+    ) {
         // WebView is always in composition once created (survives NoNetwork/Error states)
         if (uiState !is UiState.Loading) {
             AndroidView(

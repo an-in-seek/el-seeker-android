@@ -1,6 +1,8 @@
 package com.elseeker.android.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
@@ -21,10 +23,30 @@ private val LightColorScheme = lightColorScheme(
     onError = OnError
 )
 
+private val DarkColorScheme = darkColorScheme(
+    primary = PrimaryDark,
+    onPrimary = OnPrimaryDark,
+    primaryContainer = PrimaryContainerDark,
+    onPrimaryContainer = OnPrimaryContainerDark,
+    secondary = SecondaryDark,
+    onSecondary = OnSecondaryDark,
+    secondaryContainer = SecondaryContainerDark,
+    onSecondaryContainer = OnSecondaryContainerDark,
+    background = BackgroundDark,
+    onBackground = OnBackgroundDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    error = ErrorDark,
+    onError = OnErrorDark
+)
+
 @Composable
-fun ElSeekerTheme(content: @Composable () -> Unit) {
+fun ElSeekerTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
     MaterialTheme(
-        colorScheme = LightColorScheme,
+        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
         content = content
     )
 }

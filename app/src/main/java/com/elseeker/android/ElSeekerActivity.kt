@@ -52,12 +52,14 @@ class ElSeekerActivity : ComponentActivity() {
             viewModel.uiState.value is UiState.Loading
         }
 
+        // 시스템 바 아이콘 명암을 OS 다크/라이트 테마에 맞춰 자동 전환한다.
+        // (auto = 라이트 테마면 어두운 아이콘, 다크 테마면 밝은 아이콘)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(
+            statusBarStyle = SystemBarStyle.auto(
                 android.graphics.Color.TRANSPARENT,
                 android.graphics.Color.TRANSPARENT
             ),
-            navigationBarStyle = SystemBarStyle.light(
+            navigationBarStyle = SystemBarStyle.auto(
                 android.graphics.Color.TRANSPARENT,
                 android.graphics.Color.TRANSPARENT
             )
