@@ -18,3 +18,16 @@
     public static int d(...);
     public static int i(...);
 }
+
+# OkHttp (play-app-update / gms-auth 등을 통해 간접 포함)이 참조하는
+# 선택적 TLS 프로바이더 클래스들. Android 런타임에는 존재하지 않으므로
+# R8 경고를 무시한다 (런타임 동작에는 영향 없음).
+-dontwarn org.bouncycastle.jsse.BCSSLParameters
+-dontwarn org.bouncycastle.jsse.BCSSLSocket
+-dontwarn org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
+-dontwarn org.conscrypt.Conscrypt$Version
+-dontwarn org.conscrypt.Conscrypt
+-dontwarn org.conscrypt.ConscryptHostnameVerifier
+-dontwarn org.openjsse.javax.net.ssl.SSLParameters
+-dontwarn org.openjsse.javax.net.ssl.SSLSocket
+-dontwarn org.openjsse.net.ssl.OpenJSSE

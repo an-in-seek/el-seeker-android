@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.ElSeeker" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@color/primary</item>
-        <item name="android:navigationBarColor">@color/white</item>
-    </style>
+    <!--
+        시스템 바 색상은 enableEdgeToEdge(SystemBarStyle.auto)로 코드에서 처리한다.
+        android:statusBarColor / navigationBarColor는 Android 15(SDK 35)에서
+        지원 중단되어 edge-to-edge에서 무시되므로 테마에서 제거했다.
+    -->
+    <style name="Theme.ElSeeker" parent="android:Theme.Material.Light.NoActionBar" />
 
     <style name="Theme.ElSeeker.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -41,6 +42,18 @@
                     android:scheme="kakao${KAKAO_APP_KEY}" />
             </intent-filter>
         </activity>
+
+        <!--
+            Naver 로그인 SDK의 NidOAuthCustomTabActivity는 screenOrientation="BEHIND"로
+            방향을 고정한다. Android 16부터 대형 화면에서 방향/크기 제한이 무시되므로,
+            Play Console 권장에 따라 제한을 제거(unspecified)하도록 매니페스트 병합으로
+            오버라이드한다. (tools:node="merge" → 라이브러리 선언에 속성만 덮어씀)
+        -->
+        <activity
+            android:name="com.navercorp.nid.oauth.activity.NidOAuthCustomTabActivity"
+            android:screenOrientation="unspecified"
+            tools:node="merge"
+            tools:replace="android:screenOrientation" />
     </application>
 
 </manifest>

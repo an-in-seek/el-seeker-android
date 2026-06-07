@@ -15,3 +15,5 @@ local.properties
 /.omc/
 /.claude/
 /local.properties.example
+/keystore/elseeker-release.jks
+/tools/playstore/GeneratePlayStoreGraphics.java

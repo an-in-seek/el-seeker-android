@@ -17,6 +17,7 @@
 
 | 항목 | 기술 |
 |------|------|
+| 패키지 이름 | `com.elseeker.android` |
 | 언어 | Kotlin 2.0.21 |
 | Min SDK | 26 (Android 8.0) |
 | Target / Compile SDK | 35 |

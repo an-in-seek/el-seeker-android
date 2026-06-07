@@ -45,6 +45,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 네이티브 디버그 기호를 AAB에 포함 → Play Console이 자동 인식.
+            // 네이티브 크래시/ANR을 심볼화된 스택으로 분석 가능.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
 

@@ -8,6 +8,8 @@ ElSeeker 웹 서비스를 WebView 기반 Android 앱으로 제공하기 위한 �
 |------|------|
 | [android-app-spec.md](android-app-spec.md) | 기획서 - 요구사항, 기능 범위, MVP 정의, 릴리즈 로드맵 |
 | [android-app-architecture.md](android-app-architecture.md) | 설계서 - 아키텍처, 기술 스택, 상세 기술 설계 |
+| [release-signing-guide.md](release-signing-guide.md) | 서명/배포 가이드 - 업로드 키스토어 생성, 서명된 AAB 빌드 절차 |
+| [android-15-16-compatibility.md](android-15-16-compatibility.md) | Android 15/16 대응 - edge-to-edge, 지원 중단 API, 대형 화면 제한 |
 
 ## Context
 
