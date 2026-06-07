@@ -207,9 +207,27 @@ class ElSeekerViewModel(application: Application) : AndroidViewModel(application
             currentUrl = url
         }
         pendingUrl = null
+        syncTokensFromCookies()
+    }
+
+    /**
+     * 약관 동의·재발급 등으로 서버가 WebView 쿠키의 토큰을 회전시키면
+     * 그 최신 값을 영구 저장소(TokenManager)에 반영한다.
+     * 이렇게 해야 재접속 시 restoreAuthCookies()가 stale(동의-이전) 토큰을 복원해
+     * 403 CONSENT_REQUIRED 를 유발하는 것을 막는다.
+     */
+    private fun syncTokensFromCookies() {
+        val (access, refresh) = CookieHelper.readAuthTokens() ?: return
+        if (access != tokenManager.getAccessToken() || refresh != tokenManager.getRefreshToken()) {
+            tokenManager.saveTokens(access, refresh)
+        }
     }
 
     private fun restoreAuthCookies() {
+        // WebView 쿠키 저장소는 앱 재시작 후에도 유지된다.
+        // 약관 동의로 회전된 최신 토큰이 이미 쿠키에 있으면 그것을 신뢰하고 덮어쓰지 않는다.
+        if (CookieHelper.readAuthTokens() != null) return
+
         val accessToken = tokenManager.getAccessToken()
         val refreshToken = tokenManager.getRefreshToken()
         if (accessToken != null && refreshToken != null) {
