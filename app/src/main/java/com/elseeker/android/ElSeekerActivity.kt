@@ -14,10 +14,13 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.lifecycleScope
 import com.elseeker.android.ui.screen.MainScreen
 import com.elseeker.android.ui.theme.ElSeekerTheme
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
@@ -90,31 +93,81 @@ class ElSeekerActivity : ComponentActivity() {
     }
 
     private fun loginWithGoogle(isLink: Boolean) {
-        Log.i(TAG, "Google login started - clientId: ${BuildConfig.GOOGLE_WEB_CLIENT_ID.take(8)}***")
-        val googleIdOption = GetGoogleIdOption.Builder()
-            .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-            .setFilterByAuthorizedAccounts(false)
-            .build()
-
-        val request = GetCredentialRequest.Builder()
-            .addCredentialOption(googleIdOption)
-            .build()
+        val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
+        // serverClientId 는 반드시 "웹 애플리케이션" 클라이언트여야 한다(Android 클라이언트 X).
+        Log.i(
+            TAG,
+            "Google login started - clientId: ${clientId.take(12)}..., " +
+                "isWebClient: ${clientId.endsWith("apps.googleusercontent.com")}"
+        )
 
         lifecycleScope.launch {
-            try {
-                val result: GetCredentialResponse = credentialManager.getCredential(
-                    context = this@ElSeekerActivity,
-                    request = request
-                )
-                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
-                Log.i(TAG, "Google login success - idToken present: ${googleIdTokenCredential.idToken.isNotEmpty()}")
-                viewModel.handleSocialLogin("google", googleIdTokenCredential.idToken, isLink)
-            } catch (_: GetCredentialCancellationException) {
-                Log.i(TAG, "Google login cancelled by user")
-            } catch (e: Exception) {
-                Log.e(TAG, "Google sign-in failed: ${e.javaClass.simpleName} - ${e.message}", e)
-                Toast.makeText(this@ElSeekerActivity, "Google 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            // 1차: 기기에 등록된 Google 계정 바텀시트(모든 계정 노출).
+            val idOption = GetGoogleIdOption.Builder()
+                .setServerClientId(clientId)
+                .setFilterByAuthorizedAccounts(false)
+                .setAutoSelectEnabled(false)
+                .build()
+            val handled = tryGoogleCredential(
+                GetCredentialRequest.Builder().addCredentialOption(idOption).build(),
+                isLink,
+                stage = "GoogleIdOption"
+            )
+            if (handled) return@launch
+
+            // 2차: 1차에서 자격증명이 없을 때 명시적 "Sign in with Google" 흐름으로 폴백.
+            // (계정 선택/추가를 유도하므로 NoCredential 상황에 더 강건하다.)
+            val signInOption = GetSignInWithGoogleOption.Builder(clientId).build()
+            tryGoogleCredential(
+                GetCredentialRequest.Builder().addCredentialOption(signInOption).build(),
+                isLink,
+                stage = "SignInWithGoogle",
+                finalStage = true
+            )
+        }
+    }
+
+    /**
+     * Google 자격증명 요청을 1회 시도한다.
+     * @return true  → 성공/사용자취소/최종실패로 흐름 종료
+     *         false → NoCredential 이므로 호출자가 다음 단계(폴백)를 시도해야 함
+     */
+    private suspend fun tryGoogleCredential(
+        request: GetCredentialRequest,
+        isLink: Boolean,
+        stage: String,
+        finalStage: Boolean = false
+    ): Boolean {
+        return try {
+            val result: GetCredentialResponse = credentialManager.getCredential(
+                context = this@ElSeekerActivity,
+                request = request
+            )
+            val credential = GoogleIdTokenCredential.createFrom(result.credential.data)
+            Log.i(TAG, "Google login success ($stage) - idToken present: ${credential.idToken.isNotEmpty()}")
+            viewModel.handleSocialLogin("google", credential.idToken, isLink)
+            true
+        } catch (_: GetCredentialCancellationException) {
+            Log.i(TAG, "Google login cancelled by user ($stage)")
+            true
+        } catch (e: NoCredentialException) {
+            // 자격증명 없음. 원인: ① 기기에 Google 계정 없음 ② 이 빌드 서명키 SHA-1이
+            // GCP Android OAuth 클라이언트에 미등록(릴리즈/Play 앱 서명 키). 코드로는 해결 불가.
+            Log.w(TAG, "Google login NoCredential ($stage): ${e.message}")
+            if (finalStage) {
+                Toast.makeText(
+                    this@ElSeekerActivity,
+                    "사용 가능한 Google 계정이 없습니다. 기기에 Google 계정이 추가되어 있는지 확인해 주세요.",
+                    Toast.LENGTH_LONG
+                ).show()
+                true
+            } else {
+                false
             }
+        } catch (e: GetCredentialException) {
+            Log.e(TAG, "Google sign-in failed ($stage): ${e.javaClass.simpleName} - ${e.message}", e)
+            Toast.makeText(this@ElSeekerActivity, "Google 로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            true
         }
     }
 

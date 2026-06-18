@@ -17,3 +17,4 @@ local.properties
 /local.properties.example
 /keystore/elseeker-release.jks
 /tools/playstore/GeneratePlayStoreGraphics.java
+docs/security/
