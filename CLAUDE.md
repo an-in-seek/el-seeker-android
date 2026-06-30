@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ElSeeker is an Android app that wraps the ElSeeker web service (elseeker.com) — a Korean Bible study platform — using WebView. The app provides native capabilities (splash screen, offline handling, back navigation, in-app updates) around server-rendered Thymeleaf content. Documentation is in Korean; the app targets Korean-speaking users.
 
+## Backend / Web Project (Linked)
+
+The `the_bible_project/` directory in this repo root is a **symlink** to `/mnt/c/workspace/java/the_bible_project` — the **ElSeeker web + backend REST API server**. Stack: **Spring Boot 3.5 + Kotlin (JVM 21) + Spring Data JPA + Thymeleaf + Spring Cloud GCP**.
+
+This app is undergoing a **hybrid (WebView) → native migration**. As that work proceeds, the backend's role shifts:
+
+- **Current (hybrid):** the app embeds the server-rendered Thymeleaf pages in a WebView.
+- **Target (native):** native Compose screens replace WebView pages and call the backend **REST APIs directly**. The linked project is the authoritative source for those API contracts (endpoints, request/response schemas), authentication/OAuth/consent flows, and the existing page behavior each native screen must reproduce.
+
+When implementing a native screen, first read the corresponding controller/DTO/API in `the_bible_project/` to match the contract exactly. The symlink is read-only reference, local-only, and git-ignored (`/the_bible_project`) — do not commit it.
+
 ## Build Commands
 
 ```bash

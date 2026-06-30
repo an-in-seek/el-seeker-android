@@ -129,6 +129,20 @@ ElSeekerActivity (Single Activity)
 - [ ] 로컬 읽기 리마인더
 - [ ] 홈 위젯 (오늘의 말씀)
 
+## 연동 프로젝트 (웹 + 백엔드)
+
+프로젝트 루트의 `the_bible_project/` 는 `/mnt/c/workspace/java/the_bible_project` 를 가리키는 **로컬 심볼릭 링크**로, **ElSeeker 웹 + 백엔드 REST API 서버** 프로젝트입니다.
+
+| 항목 | 내용 |
+|------|------|
+| 역할 | 서버 사이드 렌더링(Thymeleaf) 페이지 + REST API 제공 |
+| 기술 스택 | Spring Boot 3.5, Kotlin (JVM 21), Spring Data JPA, Thymeleaf, Spring Cloud GCP |
+| 앱과의 관계 | WebView가 로드하는 웹 페이지 및 네이티브 화면이 호출하는 REST API의 출처 |
+
+> **하이브리드 → 네이티브 전환 맥락**: 현재 앱은 WebView로 Thymeleaf 페이지를 감싸지만, 전환이 진행되면서 네이티브 Compose 화면이 웹 페이지를 대체하고 백엔드 **REST API를 직접 호출**하게 됩니다. 따라서 이 연동 프로젝트는 단순 페이지 출처를 넘어, 네이티브 화면이 맞춰야 할 **API 계약(엔드포인트·DTO), OAuth/약관 동의 흐름, 기존 웹 동작**의 권위 있는 레퍼런스입니다.
+>
+> 심볼릭 링크는 로컬 개발 참조용(read-only)이며 `.gitignore` 처리되어 커밋되지 않습니다. 네이티브 화면 구현 시 먼저 `the_bible_project/`의 컨트롤러/DTO/API를 확인해 계약을 정확히 맞추세요.
+
 ## 문서
 
 - [Product Specification](docs/android-app-spec.md) — 기능 요구사항, 웹 커버리지, OAuth 전략
