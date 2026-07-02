@@ -3,7 +3,7 @@ package com.elseeker.android.feature.study.ui.content
 /**
  * 학습 정적 콘텐츠 카탈로그 (PRD §4-A.2 / §4-A.7).
  *
- * 백엔드 심링크(`the_bible_project/static/js/study/*.js`)가 원본이다. 여기서는 **데이터/텍스트만**
+ * 백엔드 심링크(`the_bible_project/static/js/study` 아래 `.js` 파일들)가 원본이다. 여기서는 **데이터/텍스트만**
  * 네이티브로 옮긴다(렌더링 로직 미이식). ready 항목의 전문·해설·카드 텍스트는 원본 JS 상수
  * (`FULL_*_TEXT`, `*_HISTORY`, 카드 배열)와 1:1 로 일치해야 한다.
  * "구조부터, 데이터는 점진적" 방침에 따라 아직 추출하지 못한 항목은 [ready] = false 로 두어
