@@ -1,12 +1,20 @@
 # ElSeeker ProGuard Rules
 
-# Keep WebView JavaScript interface methods
--keepclassmembers class com.elseeker.android.bridge.ElSeekerJsBridge {
-    @android.webkit.JavascriptInterface <methods>;
-}
-
 # Keep BuildConfig
 -keep class com.elseeker.android.BuildConfig { *; }
+
+# ──────────────────────────────────────────────────────────────────────────
+# Kotlinx Serialization (Retrofit 응답/요청 DTO 직렬화)
+# 직렬화는 컴파일러가 생성한 KSerializer 를 리플렉션 없이 사용하지만,
+# @Serializable 클래스의 Companion / serializer() 가 제거/난독화되면 깨진다.
+-keepattributes *Annotation*
+-keepclassmembers @kotlinx.serialization.Serializable class com.elseeker.android.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.elseeker.android.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class com.elseeker.android.**$$serializer { *; }
 
 # Google Play Services Auth (consumer rules 보완)
 -keep class com.google.android.gms.auth.api.signin.** { *; }

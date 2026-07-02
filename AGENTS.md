@@ -1,7 +1,9 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This repository contains a single Android app module, `:app`, built with Gradle Kotlin DSL. Kotlin sources live under `app/src/main/java/com/elseeker/android`, split by concern: `ui/screen` for Compose screens, `ui/theme` for theming, `webview` for WebView setup and clients, and `network` for connectivity monitoring. Android resources are in `app/src/main/res`. Product and architecture notes live in `docs/`, especially `docs/android-app-spec.md` and `docs/android-app-architecture.md`.
+This repository contains a single Android app module, `:app`, built with Gradle Kotlin DSL. The app is **fully native Jetpack Compose (no WebView)** — see `docs/android-native-app-prd.md`. Kotlin sources under `app/src/main/java/com/elseeker/android` are organized by layer: `app/` (root nav: `ElSeekerApp`, `MainScaffold`, `AppViewModel`), `core/` (`network` for Retrofit/OkHttp/auth interceptor+authenticator, `auth` for token store/session, `di` for Hilt modules, `ui` for shared Compose helpers), and `feature/<area>/` each split into `data` (Retrofit API + DTOs), `domain` (repository), and `ui` (screens + `@HiltViewModel`). Areas: `auth`, `bible`, `study`, `home`, `my`. Android resources are in `app/src/main/res`. Product/architecture notes live in `docs/`.
+
+⚠️ The Android SDK is Windows-side; **WSL cannot build this project** (`gradlew` is absent here). Build/run from Windows Android Studio or a Windows `gradlew`.
 
 The `the_bible_project/` directory is a local, git-ignored **symlink** to `/mnt/c/workspace/java/the_bible_project` — the **ElSeeker web + backend REST API server** (Spring Boot 3.5 + Kotlin + JPA + Thymeleaf + Spring Cloud GCP). This app is migrating from a **hybrid WebView wrapper to a native app**: as native Compose screens replace embedded web pages, they call the backend **REST APIs directly** instead of loading Thymeleaf pages. Treat the linked project as the authoritative read-only reference for REST API contracts (endpoints, DTOs), OAuth/consent flows, and the existing web behavior each native screen must reproduce; do not commit the symlink.
 

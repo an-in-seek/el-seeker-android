@@ -18,3 +18,7 @@ local.properties
 /keystore/elseeker-release.jks
 /tools/playstore/GeneratePlayStoreGraphics.java
 docs/security/
+
+# 로컬 개발용 심볼릭 링크 (백엔드/웹 프로젝트)
+/the_bible_project
+/docs/claude-code-hook-node-path-fix.md

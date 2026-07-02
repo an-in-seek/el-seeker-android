@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- debug 전용 설정: 로컬 백엔드(DEBUG_BASE_URL) 개발을 위해 cleartext 를 허용한다.
+     에뮬레이터(10.0.2.2)·localhost 외에 실기기에서 호스트 LAN IP(http://192.168.x.x)로
+     붙는 경우가 있어 base-config 로 허용한다. release 는 별도 설정으로 cleartext 금지. -->
 <network-security-config>
-    <!-- Allow cleartext for local development only -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">10.0.2.2</domain>
-        <domain includeSubdomains="false">localhost</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

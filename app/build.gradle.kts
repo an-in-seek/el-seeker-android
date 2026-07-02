@@ -4,6 +4,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 val localProps = Properties().apply {
@@ -35,7 +38,10 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"https://elseeker.com\"")
+            // 기본은 운영 백엔드. 로컬 백엔드로 붙이려면 local.properties 에 DEBUG_BASE_URL 을
+            // 지정한다(에뮬레이터 http://10.0.2.2:8080, 실기기는 호스트 LAN IP).
+            // http 사용 시 network_security_config 에 cleartext 허용을 추가한다. (PRD §8)
+            buildConfigField("String", "BASE_URL", "\"${localProp("DEBUG_BASE_URL", "https://elseeker.com")}\"")
             isDebuggable = true
         }
         release {
@@ -71,6 +77,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 
@@ -79,13 +86,34 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.navigation.compose)
 
-    implementation(libs.androidx.webkit)
+    // 의존성 주입
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+
+    // 네트워크 (REST API — v1 전부 네이티브, WebView 미사용)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.kotlinx.serialization.json)
+
+    // 이미지 로딩
+    implementation(libs.coil.compose)
+
+    // 로컬 저장 (토큰: EncryptedSharedPreferences)
+    implementation(libs.androidx.security.crypto)
+
+    // 플랫폼/브랜딩
     implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.browser)
-    implementation(libs.androidx.security.crypto)
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
+
+    // 소셜 로그인 SDK
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services)
     implementation(libs.google.googleid)

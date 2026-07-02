@@ -37,51 +37,56 @@ No test infrastructure exists yet — no test dependencies or test source files.
 
 ## Architecture
 
-**Single Activity + WebView + MVVM** — one activity (`ElSeekerActivity`) hosts Jetpack Compose UI that wraps a WebView for all content.
+**전부 네이티브 (Single Activity + Jetpack Compose + MVVM + Hilt)** — `MainActivity` 하나가 Compose Navigation 으로 모든 화면을 렌더링한다. **WebView 는 사용하지 않는다**(PRD §4-A). 콘텐츠는 REST API(`the_bible_project` 백엔드) 또는 정적 번들로 네이티브 렌더링한다.
 
 ```
-ElSeekerActivity
-  └─ ElSeekerViewModel (StateFlow<UiState>)
-       ├─ UiState.Loading  → SplashScreen (Android 12+ API)
-       ├─ UiState.Ready    → WebView + progress bar
-       ├─ UiState.NoNetwork → OfflineScreen (Compose)
-       └─ UiState.Error    → ErrorScreen (Compose)
+MainActivity (@AndroidEntryPoint)
+  ├─ AppViewModel  → 콜드 스타트 세션 복원 → AuthState
+  └─ ElSeekerApp(authState)
+       ├─ Unknown        → 스플래시 유지
+       ├─ Unauthenticated → LoginScreen (소셜 3종)
+       ├─ NeedsConsent    → ConsentScreen (약관 동의)
+       └─ Authenticated   → MainScaffold (하단탭: 홈/성경/학습/마이) + NavHost
 ```
 
 Key design decisions:
-- **No native navigation/screens** — all pages are Thymeleaf SSR; the web already has a mobile-optimized bottom tab bar
-- **No networking library** (no Retrofit/OkHttp) — content loads via WebView
-- **No DI framework** (no Hilt/Dagger) — simple enough for direct construction
-- **No Room/database** — all data lives on the server
+- **전부 네이티브 화면 + Compose Navigation** — WebView/Thymeleaf 렌더링 미사용
+- **Retrofit + OkHttp + Kotlinx Serialization** — Bearer 인터셉터 + `/reissue` Authenticator(회전 없음)
+- **Hilt** DI — `core/di/NetworkModule` 가 auth/no-auth 클라이언트와 API 서비스 제공
+- **EncryptedSharedPreferences** 토큰 저장, JWT `scope=SIGNUP` 로컬 판별로 세션 복원 게이트(PRD §5.4)
+- **No Room/database (v1)** — 데이터는 서버. 오프라인 캐시는 2차
 
 ### Source Layout (`app/src/main/java/com/elseeker/android/`)
 
-- `ElSeekerApplication.kt` — Application class, WebView debug setup
-- `ElSeekerActivity.kt` — Single activity, splash screen, back button handling
-- `ElSeekerViewModel.kt` — UI state management, network state
-- `network/NetworkMonitor.kt` — Connectivity monitoring via StateFlow
-- `webview/WebViewSetup.kt` — Centralized WebView configuration (settings, cookies, user-agent)
-- `webview/ElSeekerWebViewClient.kt` — URL routing (internal vs external), error handling
-- `webview/ElSeekerWebChromeClient.kt` — Progress tracking, console logging
-- `ui/screen/MainScreen.kt` — Main Compose screen with WebView
-- `ui/screen/ErrorScreen.kt`, `OfflineScreen.kt` — Native error/offline overlays
-- `ui/theme/Theme.kt`, `Color.kt` — Material3 theming
+- `MainActivity.kt` — 단일 Activity. 소셜 SDK 호출(Google CM/Kakao/Naver)·스플래시·인앱 업데이트
+- `ElSeekerApplication.kt` — `@HiltAndroidApp`, Kakao/Naver SDK 초기화
+- `app/` — `AppViewModel`(세션 복원), `ElSeekerApp`(인증 라우팅), `MainScaffold`(하단탭+NavHost), `navigation/Destinations`
+- `core/network/` — `AuthInterceptor`, `TokenAuthenticator`, `TokenRefreshService`, `ApiException`, `SafeApiCall`, `ErrorResponse`
+- `core/auth/` — `AuthTokenStore`(암호화 저장), `SessionManager`(AuthState), `JwtDecoder`(scope 판별)
+- `core/di/NetworkModule.kt` — Hilt: Json/OkHttp/Retrofit/API 서비스
+- `core/ui/` — `UiResource`, `ResourceContent`(로딩/오류 표준)
+- `feature/auth/` — data(API/DTO)·domain(`AuthRepository`)·ui(Login/Consent/`AuthViewModel`)
+- `feature/bible/` — data(`BibleApi`/DTO)·domain(`BibleRepository`)·ui(Books/Reader 화면+VM)
+- `feature/study/` — data(`DictionaryApi`/Repository)·ui(StudyScreen 사전)
+- `feature/home/`, `feature/my/` — 오늘의 말씀, 프로필/로그아웃
+- `ui/theme/Theme.kt`, `Color.kt` — Material3 테마(라이트/다크)
 
-### URL Routing
+> 오프라인/네트워크 오류는 요청 단위로 `ApiException.isNetwork` → `UiResource.Error`(재시도 버튼)로 처리한다. 전역 연결 배너는 후속.
 
-- Internal URLs (elseeker.com) load in WebView
-- Google OAuth uses Chrome Custom Tabs (`androidx.browser`)
-- Kakao/Naver OAuth loads in WebView
-- External URLs (YouTube, etc.) open in system browser
+### 외부 위임 (WebView 미사용 예외)
+
+- 외부 링크(YouTube 등)·약관 페이지 등은 Chrome Custom Tabs(`androidx.browser`) 또는 시스템 브라우저로 위임
 
 ## Build Configuration
 
-- **Kotlin 2.0.21**, Java 17 target
+- **Kotlin 2.0.21**, Java 17 target / KSP `2.0.21-1.0.28`
 - **AGP 8.13.2**, Compile/Target SDK 35, Min SDK 26
+- **Hilt 2.52**, Retrofit 2.11.0 + OkHttp 4.12.0 + Kotlinx Serialization 1.7.3, Navigation Compose 2.8.5, Coil 2.7.0
 - **Gradle Kotlin DSL** with version catalog (`gradle/libs.versions.toml`)
 - **Compose BOM 2024.12.01** (Material3)
 - Build variants: `debug` (debuggable) / `release` (HTTPS enforced, R8 minification)
-- ProGuard keeps `@JavascriptInterface` methods on future JS Bridge class and `BuildConfig`
+- ProGuard: Signature/애노테이션 유지(Retrofit 제네릭), Kotlinx Serialization keep, `BuildConfig`
+- ⚠️ **WSL에서는 빌드 불가** (Android SDK가 Windows 측, `gradlew` 부재). 빌드/실행은 Windows의 Android Studio 또는 `gradlew` 로 수행
 
 ## Phased Roadmap
 

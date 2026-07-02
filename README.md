@@ -1,17 +1,22 @@
 # ElSeeker - 성경 플랫폼 Android 앱
 
-[ElSeeker](https://elseeker.com) 웹 서비스를 WebView로 감싼 Android 네이티브 앱입니다.
-웹의 모든 기능을 그대로 제공하면서, 스플래시 스크린·오프라인 처리·하드웨어 뒤로가기 등 네이티브 앱 경험을 추가합니다.
+[ElSeeker](https://elseeker.com) 백엔드(REST API)를 사용하는 **전부 네이티브** Android 앱입니다(Jetpack Compose).
+WebView 없이 모든 화면을 네이티브로 렌더링하며, 웹과 동일한 백엔드·계정 체계를 공유합니다. (전환 배경: `docs/android-native-app-prd.md`)
 
-## 주요 기능
+> ⚠️ **빌드 환경**: Android SDK가 Windows 측에 있어 **WSL에서는 빌드 불가**합니다. Windows의 Android Studio 또는 `gradlew` 로 빌드하세요.
 
-- **WebView 기반 콘텐츠** — 성경 읽기, 학습, 커뮤니티, 게임 등 모든 웹 페이지를 앱에서 제공
-- **소셜 로그인** — Google (Chrome Custom Tabs), Kakao, Naver OAuth2 지원
-- **스플래시 스크린** — Android 12+ SplashScreen API 기반
-- **오프라인 처리** — 네트워크 상태 모니터링, 네이티브 에러/오프라인 화면 + 자동 복구
-- **하드웨어 뒤로가기** — WebView 히스토리 탐색, 두 번 누르면 종료
-- **외부 링크 라우팅** — YouTube는 앱으로, 기타 외부 링크는 시스템 브라우저로 이동
-- **In-App Update** — Google Play In-App Update API로 앱 업데이트 유도
+## 주요 기능 (v1 MVP 진행 현황)
+
+- **네이티브 인증** — Google(Credential Manager)·Kakao·Naver SDK 로그인 + 약관 동의 + 세션 복원(JWT scope/`/me` status 게이트)
+- **성경 읽기(앵커)** — 번역본→책→장→절 본문 네이티브 뷰어, 이전/다음 장 이동(PRD §4-A.9 번역본 게이트: KRV)
+- **홈** — 오늘의 말씀(daily verse)
+- **학습** — 성경 사전 검색/목록(정적 콘텐츠는 후속)
+- **마이** — 프로필 조회, 로그아웃
+- **스플래시** — Android 12+ SplashScreen API
+- **오류/오프라인 처리** — 요청 단위 로딩/오류 상태 + 재시도
+- **In-App Update** — Google Play In-App Update API
+
+> 게임·커뮤니티·정적 학습 콘텐츠(족보·개요영상 등)는 2차/후속 범위입니다. 토큰 갱신은 OkHttp Authenticator + `/api/v1/auth/reissue`(회전 없음)로 처리합니다.
 
 ## 기술 스택
 
@@ -21,39 +26,40 @@
 | 언어 | Kotlin 2.0.21 |
 | Min SDK | 26 (Android 8.0) |
 | Target / Compile SDK | 35 |
-| UI | Jetpack Compose (Material3) + WebView |
+| UI | Jetpack Compose (Material3) — WebView 미사용 |
 | 빌드 | Gradle Kotlin DSL, Version Catalog |
-| 아키텍처 | Single Activity + ViewModel (MVVM) |
+| 아키텍처 | Single Activity + Compose Navigation + MVVM + Hilt |
 
 ### 주요 의존성
 
-- Compose BOM 2024.12.01
-- AndroidX Webkit 1.12.1
-- AndroidX SplashScreen 1.0.1
-- AndroidX Browser 1.8.0 (Chrome Custom Tabs)
+- Compose BOM 2024.12.01, Navigation Compose 2.8.5
+- Hilt 2.52 (DI)
+- Retrofit 2.11.0 + OkHttp 4.12.0 + Kotlinx Serialization 1.7.3
+- Coil 2.7.0 (이미지), DataStore / Security-Crypto (토큰)
+- AndroidX SplashScreen 1.0.1, Browser 1.8.0 (Custom Tabs)
+- 소셜 SDK: Google Credential Manager, Kakao v2-user, Naver OAuth
 - Google Play In-App Update 2.1.0
 
 ## 프로젝트 구조
 
 ```
 app/src/main/java/com/elseeker/android/
-├── ElSeekerApplication.kt          # Application 클래스, WebView 디버그 설정
-├── ElSeekerActivity.kt             # Single Activity, 스플래시, 뒤로가기 처리
-├── ElSeekerViewModel.kt            # UI 상태 관리 (Loading/Ready/NoNetwork/Error)
-├── network/
-│   └── NetworkMonitor.kt           # ConnectivityManager 기반 네트워크 상태 모니터링
-├── webview/
-│   ├── WebViewSetup.kt             # WebView 설정 (쿠키, User-Agent 등)
-│   ├── ElSeekerWebViewClient.kt    # URL 라우팅, 에러 처리
-│   └── ElSeekerWebChromeClient.kt  # 로딩 진행률, 콘솔 로그
-└── ui/
-    ├── theme/
-    │   ├── Theme.kt                # Material3 테마
-    │   └── Color.kt                # 색상 정의
-    └── screen/
-        ├── MainScreen.kt           # WebView + 프로그레스 바
-        ├── ErrorScreen.kt          # 에러 화면
-        └── OfflineScreen.kt        # 오프라인 화면
+├── MainActivity.kt                 # 단일 Activity, 소셜 SDK 호출, 스플래시, 인앱 업데이트
+├── ElSeekerApplication.kt          # @HiltAndroidApp, Kakao/Naver SDK 초기화
+├── app/                            # AppViewModel(세션 복원), ElSeekerApp(인증 라우팅),
+│   └── navigation/                 #   MainScaffold(하단탭+NavHost), Destinations
+├── core/
+│   ├── network/                    # AuthInterceptor, TokenAuthenticator, ApiException, SafeApiCall
+│   ├── auth/                       # AuthTokenStore(암호화), SessionManager, JwtDecoder
+│   ├── di/NetworkModule.kt         # Hilt: Json/OkHttp/Retrofit/API
+│   └── ui/                         # UiResource, ResourceContent (로딩/오류 표준)
+├── feature/
+│   ├── auth/                       # data·domain(AuthRepository)·ui(Login/Consent/AuthViewModel)
+│   ├── bible/                      # data(BibleApi)·domain(BibleRepository)·ui(Books/Reader)
+│   ├── study/                      # data(DictionaryApi/Repository)·ui(사전)
+│   ├── home/                       # 오늘의 말씀
+│   └── my/                         # 프로필/로그아웃
+└── ui/theme/                       # Material3 테마(라이트/다크)
 ```
 
 ## 빌드 및 실행
@@ -89,45 +95,46 @@ app/src/main/java/com/elseeker/android/
 ## 아키텍처
 
 ```
-ElSeekerActivity (Single Activity)
-  └─ ElSeekerViewModel (StateFlow<UiState>)
-       ├─ UiState.Loading   → SplashScreen
-       ├─ UiState.Ready     → WebView + 프로그레스 바
-       ├─ UiState.NoNetwork → OfflineScreen (Compose)
-       └─ UiState.Error     → ErrorScreen (Compose)
+MainActivity (@AndroidEntryPoint)
+  ├─ AppViewModel → 콜드 스타트 세션 복원 → AuthState
+  └─ ElSeekerApp(authState)
+       ├─ Unknown         → SplashScreen 유지
+       ├─ Unauthenticated → LoginScreen (Google/Kakao/Naver)
+       ├─ NeedsConsent    → ConsentScreen (약관 3항목 필수)
+       └─ Authenticated   → MainScaffold (하단탭 + NavHost)
+                              ├─ 홈   (오늘의 말씀)
+                              ├─ 성경 (책 목록 → 본문 뷰어)
+                              ├─ 학습 (사전)
+                              └─ 마이 (프로필/로그아웃)
 ```
 
-- 모든 콘텐츠는 서버 사이드 렌더링(Thymeleaf SSR) → 네이티브 화면 불필요
-- 웹의 모바일 Bottom Tab Bar를 그대로 사용 (이중 네비게이션 방지)
-- DI 프레임워크/네트워킹 라이브러리/로컬 DB 없이 경량 구성
+- 전부 네이티브 렌더링(WebView 미사용). REST API 또는 정적 번들로 데이터 공급
+- 세션 게이트(PRD §5.4): JWT `scope==SIGNUP` 이면 동의 화면, `/me.status==ACTIVE` 만 메인
+- 토큰: EncryptedSharedPreferences 저장, OkHttp Authenticator 가 `/reissue`(회전 없음)로 갱신
 
-### URL 라우팅
+### 외부 위임 (WebView 예외)
 
-| URL 패턴 | 처리 방식 |
-|-----------|-----------|
-| elseeker.com/* | WebView 내부 로드 |
-| Kakao/Naver OAuth | WebView 내부 로드 |
-| Google OAuth | Chrome Custom Tabs |
-| YouTube | YouTube 앱 또는 시스템 브라우저 |
-| 기타 외부 URL | 시스템 브라우저 |
+| 대상 | 처리 방식 |
+|------|-----------|
+| 외부 링크(YouTube 등)·약관 페이지 | Chrome Custom Tabs / 시스템 브라우저 |
 
 ## 로드맵
 
-### Phase 1 — MVP (현재)
-- [x] WebView 셸 + OAuth 소셜 로그인
-- [x] 스플래시 스크린, 오프라인/에러 처리
-- [x] 하드웨어 뒤로가기, 외부 링크 라우팅
-- [x] In-App Update
+### M0/M1 — 기반 + 1차 패리티 (현재 진행)
+- [x] 네이티브 기반: Hilt DI, Retrofit/OkHttp 네트워크, 토큰 저장·재발급, 에러 매퍼
+- [x] 소셜 로그인 3종 + 약관 동의 + 세션 복원(403 CONSENT_REQUIRED 전역 라우팅, 로그아웃 시 SDK 세션 정리)
+- [x] 앱 셸: 하단탭, 스플래시(다크 대응), 오프라인 상태·재시도, 뒤로가기 2회 종료
+- [x] 성경 읽기(번역본→책→장→절 본문 + 장 선택 picker + 이전/다음 장), 홈(오늘의 말씀), 학습(사전), 마이(프로필)
+- [x] 회원 탈퇴(Play 계정삭제 정책), App Links 딥링크(앱측 — 서버 `assetlinks.json` 필요)
+- [ ] 성경 검색·하이라이트·메모·읽기진도 **UI** (API 계층 완료, 화면 후속)
+- [ ] 책 개요, 사전 상세/참조, 프로필 수정·계정 연동, 내 메모, 1:1 문의
+- [ ] 학습 정적 콘텐츠(족보·개요영상·정적 9종·성경역사)
 
-### Phase 2 — Enhanced Experience
-- [ ] Android App Links (딥링크)
-- [ ] 오프라인 성경 캐시
-- [ ] 네이티브 공유 (JS Bridge)
+### M2 — 게임 · 커뮤니티 네이티브화
+### M3 — 앱 고유 가치 (FCM 푸시 · 오프라인 캐시 · 위젯)
+### M4 — 출시/운영 (Play Console, Data Safety, 단계 배포)
 
-### Phase 3 — Native Features
-- [ ] FCM 푸시 알림
-- [ ] 로컬 읽기 리마인더
-- [ ] 홈 위젯 (오늘의 말씀)
+> **App Links 활성화 조건**: 서버가 `https://elseeker.com/.well-known/assetlinks.json` 에 릴리스 서명 SHA-256 지문을 호스팅해야 자동 검증(autoVerify)이 동작합니다. 앱 매니페스트·라우팅은 `/bible`, `/study` 경로에 대해 구현 완료.
 
 ## 연동 프로젝트 (웹 + 백엔드)
 
@@ -137,9 +144,9 @@ ElSeekerActivity (Single Activity)
 |------|------|
 | 역할 | 서버 사이드 렌더링(Thymeleaf) 페이지 + REST API 제공 |
 | 기술 스택 | Spring Boot 3.5, Kotlin (JVM 21), Spring Data JPA, Thymeleaf, Spring Cloud GCP |
-| 앱과의 관계 | WebView가 로드하는 웹 페이지 및 네이티브 화면이 호출하는 REST API의 출처 |
+| 앱과의 관계 | 네이티브 Compose 화면이 직접 호출하는 REST API의 출처 (WebView 미사용) |
 
-> **하이브리드 → 네이티브 전환 맥락**: 현재 앱은 WebView로 Thymeleaf 페이지를 감싸지만, 전환이 진행되면서 네이티브 Compose 화면이 웹 페이지를 대체하고 백엔드 **REST API를 직접 호출**하게 됩니다. 따라서 이 연동 프로젝트는 단순 페이지 출처를 넘어, 네이티브 화면이 맞춰야 할 **API 계약(엔드포인트·DTO), OAuth/약관 동의 흐름, 기존 웹 동작**의 권위 있는 레퍼런스입니다.
+> **네이티브 전환 완료(기반)**: 앱은 WebView 없이 백엔드 **REST API를 직접 호출**하는 전부-네이티브 구조입니다. 따라서 이 연동 프로젝트는 네이티브 화면이 맞춰야 할 **API 계약(엔드포인트·DTO), OAuth/약관 동의 흐름, 정적 콘텐츠 데이터**의 권위 있는 read-only 레퍼런스입니다.
 >
 > 심볼릭 링크는 로컬 개발 참조용(read-only)이며 `.gitignore` 처리되어 커밋되지 않습니다. 네이티브 화면 구현 시 먼저 `the_bible_project/`의 컨트롤러/DTO/API를 확인해 계약을 정확히 맞추세요.
 

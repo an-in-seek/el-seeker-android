@@ -11,6 +11,7 @@ ElSeeker 웹 서비스를 WebView 기반 Android 앱으로 제공하기 위한 �
 | [release-signing-guide.md](release-signing-guide.md) | 서명/배포 가이드 - 업로드 키스토어 생성, 서명된 AAB 빌드 절차 |
 | [aab-local-install-guide.md](aab-local-install-guide.md) | 로컬 설치 가이드 - bundletool 설치, 실제 기기 설치, Logcat 확보 절차 |
 | [android-15-16-compatibility.md](android-15-16-compatibility.md) | Android 15/16 대응 - edge-to-edge, 지원 중단 API, 대형 화면 제한 |
+| [claude-code-hook-node-path-fix.md](claude-code-hook-node-path-fix.md) | 개발환경 - Claude Code Hook `node: command not found` 오류 원인 분석 및 해결(shim) |
 
 ## Context
 

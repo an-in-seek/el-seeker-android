@@ -3,7 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".ElSeekerApplication"
@@ -17,7 +16,7 @@
         android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
-            android:name=".ElSeekerActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/Theme.ElSeeker.Splash"
@@ -26,6 +25,19 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                App Links (PRD §6 ★). 앱이 네이티브로 렌더링하는 경로(/bible, /study)만
+                가로채 웹 전체 링크를 하이재킹하지 않는다. autoVerify 는 서버에
+                /.well-known/assetlinks.json (릴리스 서명 지문 포함) 호스팅이 필요하다.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="elseeker.com" android:pathPrefix="/bible" />
+                <data android:scheme="https" android:host="elseeker.com" android:pathPrefix="/study" />
             </intent-filter>
         </activity>
 
