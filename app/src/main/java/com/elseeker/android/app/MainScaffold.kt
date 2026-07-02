@@ -32,6 +32,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.elseeker.android.app.navigation.Routes
 import com.elseeker.android.app.navigation.TopLevelDestination
+import com.elseeker.android.core.auth.AuthState
+import com.elseeker.android.feature.auth.ui.LoginScreen
 import com.elseeker.android.feature.bible.ui.BibleBookOverviewScreen
 import com.elseeker.android.feature.bible.ui.BibleBooksScreen
 import com.elseeker.android.feature.bible.ui.BibleReaderScreen
@@ -48,13 +50,20 @@ import com.elseeker.android.feature.study.ui.content.StaticContentScreen
 import com.elseeker.android.feature.support.ui.InquiryComposeScreen
 import com.elseeker.android.feature.support.ui.InquiryDetailScreen
 import com.elseeker.android.feature.support.ui.InquiryListScreen
+import com.elseeker.android.ui.screen.OfflineScreen
 
 /**
- * 인증 완료 상태의 메인 셸. 하단 탭(홈/성경/학습/마이) + 내부 NavHost.
+ * 메인 셸(게스트 포함). 하단 탭(홈/성경/학습/마이) + 내부 NavHost.
+ * 웹과 동일하게 홈/성경/학습은 비로그인 탐색 가능(공개 API)하고,
+ * 마이 탭은 [authState] 에 따라 로그인 화면(게스트)/오프라인 재시도/마이 화면으로 분기한다.
  * 성경 본문 뷰어는 탭 위에 push 되는 하위 라우트라 하단 탭을 숨긴다.
  */
 @Composable
 fun MainScaffold(
+    authState: AuthState,
+    loginBusy: Boolean,
+    onSocialLogin: (provider: String) -> Unit,
+    onRetrySession: () -> Unit,
     onLoggedOut: () -> Unit,
     modifier: Modifier = Modifier,
     pendingDeepLink: String? = null,
@@ -156,13 +165,23 @@ fun MainScaffold(
                 )
             }
             composable(Routes.MY) {
-                MyScreen(
-                    onLoggedOut = onLoggedOut,
-                    onOpenProfileEdit = { navController.navigate(Routes.MY_PROFILE_EDIT) },
-                    onOpenLinkedAccounts = { navController.navigate(Routes.MY_LINKED_ACCOUNTS) },
-                    onOpenInquiries = { navController.navigate(Routes.SUPPORT_INQUIRIES) },
-                    onOpenMyMemos = { navController.navigate(Routes.MY_MEMOS) },
-                )
+                when (authState) {
+                    AuthState.Authenticated -> MyScreen(
+                        onLoggedOut = onLoggedOut,
+                        onOpenProfileEdit = { navController.navigate(Routes.MY_PROFILE_EDIT) },
+                        onOpenLinkedAccounts = { navController.navigate(Routes.MY_LINKED_ACCOUNTS) },
+                        onOpenInquiries = { navController.navigate(Routes.SUPPORT_INQUIRIES) },
+                        onOpenMyMemos = { navController.navigate(Routes.MY_MEMOS) },
+                    )
+                    // 토큰은 있으나 세션 복원이 네트워크로 보류된 상태 — 로그인 화면 대신 재시도.
+                    AuthState.Offline -> OfflineScreen(onRetry = onRetrySession)
+                    // 게스트: 웹 /web/auth/login 과 동일한 로그인 화면. '둘러보기' → 홈 탭.
+                    else -> LoginScreen(
+                        busy = loginBusy,
+                        onSocialLogin = onSocialLogin,
+                        onBrowse = { navigateRoute(Routes.HOME) },
+                    )
+                }
             }
 
             // 마이 하위 화면

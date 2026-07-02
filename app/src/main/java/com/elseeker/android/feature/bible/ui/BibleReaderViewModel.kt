@@ -52,6 +52,10 @@ class BibleReaderViewModel @Inject constructor(
     private val hasAuthSession: Boolean
         get() = sessionManager.hasSession() && !sessionManager.isSignupSession
 
+    /** 게스트는 하이라이트/메모를 쓸 수 없다(웹과 동일 — 보호 API). 화면이 절 탭 시 확인. */
+    val canAnnotate: Boolean
+        get() = hasAuthSession
+
     init { loadChapter(initialBookOrder, initialChapter) }
 
     fun loadChapter(bookOrder: Int, chapterNumber: Int) {

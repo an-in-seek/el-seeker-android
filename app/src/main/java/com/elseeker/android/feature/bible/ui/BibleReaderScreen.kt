@@ -118,6 +118,7 @@ fun BibleReaderScreen(
                 .fillMaxSize()
                 .padding(inner),
         ) { data ->
+            val context = androidx.compose.ui.platform.LocalContext.current
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
@@ -131,7 +132,18 @@ fun BibleReaderScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
                             .then(if (highlightColor != null) Modifier.background(highlightColor) else Modifier)
-                            .clickable { selectedVerse = verse.verseNumber }
+                            .clickable {
+                                // 게스트는 하이라이트/메모 불가(웹과 동일) — 로그인 안내만.
+                                if (viewModel.canAnnotate) {
+                                    selectedVerse = verse.verseNumber
+                                } else {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        context.getString(R.string.bible_reader_login_required),
+                                        android.widget.Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
                             .padding(horizontal = 4.dp, vertical = 2.dp),
                     ) {
                         Text(
