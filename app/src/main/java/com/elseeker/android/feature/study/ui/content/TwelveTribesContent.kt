@@ -1,0 +1,97 @@
+package com.elseeker.android.feature.study.ui.content
+
+/** 이스라엘 12지파 — 원본: static/js/study/twelve-tribes.js. 텍스트는 원문 그대로. */
+internal val twelveTribesContent: StudyContentItem = StudyContentItem(
+    key = "twelve-tribes",
+    title = "12지파",
+    subtitle = "야곱의 열두 아들로부터 시작된 이스라엘의 12지파",
+    track = StudyTrack.S1,
+    ready = true,
+    cardsTitle = "지파별 소개",
+    cards = listOf(
+        StudyCard(
+            tag = "어머니 레아 · 이름의 뜻: 보라, 아들이다",
+            title = "르우벤",
+            meaning = "야곱의 장자였으나 아버지의 침상을 더럽힌 죄로 장자권을 잃었다.",
+            relatedVerse = "창세기 49:3-4",
+            relatedVerseText = "르우벤아 너는 내 장자요 나의 능력이요 나의 기력의 시작이라 위풍이 월등하고 권능이 탁월하도다마는 물의 끓음 같았은즉 너는 탁월하지 못하리니 네가 아버지의 침상에 올라 더럽혔음이로다",
+        ),
+        StudyCard(
+            tag = "어머니 레아 · 이름의 뜻: 들으심",
+            title = "시므온",
+            meaning = "레위와 함께 세겜 사건에서 분노하여 학살을 행했고, 야곱에게 저주를 받았다.",
+            relatedVerse = "창세기 49:5-7",
+            relatedVerseText = "시므온과 레위는 형제요 그들의 칼은 폭력의 도구로다 내 혼아 그들의 모의에 상관하지 말지어다",
+        ),
+        StudyCard(
+            tag = "어머니 레아 · 이름의 뜻: 결합",
+            title = "레위",
+            meaning = "제사장 지파로 선택되어 성막과 성전에서 하나님을 섬겼다. 땅의 기업 대신 하나님이 기업이 되셨다.",
+            relatedVerse = "신명기 33:8-10",
+            relatedVerseText = "레위에 대하여는 일렀으되 주의 둠밈과 우림이 주의 경건한 자에게 있도다 ... 주의 율례를 야곱에게, 주의 율법을 이스라엘에게 가르치며",
+        ),
+        StudyCard(
+            tag = "어머니 레아 · 이름의 뜻: 찬양",
+            title = "유다",
+            meaning = "왕의 지파로, 다윗 왕과 예수 그리스도가 이 지파에서 나셨다. 홀이 유다를 떠나지 않을 것이라 예언되었다.",
+            relatedVerse = "창세기 49:8-10",
+            relatedVerseText = "유다야 너는 네 형제의 찬송이 될지라 ... 홀이 유다를 떠나지 아니하며 통치자의 지팡이가 그 발 사이에서 떠나지 아니하시기를 실로가 오시기까지 미치리니",
+        ),
+        StudyCard(
+            tag = "어머니 빌하 (라헬의 여종) · 이름의 뜻: 심판",
+            title = "단",
+            meaning = "백성을 심판하는 지파로 예언되었다. 삼손이 이 지파에서 나왔다.",
+            relatedVerse = "창세기 49:16-17",
+            relatedVerseText = "단은 이스라엘의 한 지파 같이 그의 백성을 심판하리로다 단은 길의 뱀이요 첩경의 독사리로다",
+        ),
+        StudyCard(
+            tag = "어머니 빌하 (라헬의 여종) · 이름의 뜻: 나의 씨름",
+            title = "납달리",
+            meaning = "놓인 암사슴 같이 아름다운 말을 하는 지파로 축복받았다.",
+            relatedVerse = "창세기 49:21",
+            relatedVerseText = "납달리는 놓인 암사슴이라 아름다운 소리를 발하는도다",
+        ),
+        StudyCard(
+            tag = "어머니 실바 (레아의 여종) · 이름의 뜻: 행운",
+            title = "갓",
+            meaning = "군대의 침략을 받으나 도리어 그 뒤를 추격하는 용맹한 지파로 예언되었다.",
+            relatedVerse = "창세기 49:19",
+            relatedVerseText = "갓은 군대의 추격을 받으나 도리어 그 뒤를 추격하리로다",
+        ),
+        StudyCard(
+            tag = "어머니 실바 (레아의 여종) · 이름의 뜻: 행복",
+            title = "아셀",
+            meaning = "기름진 음식을 산출하여 왕의 진수를 공급하는 풍요로운 지파로 축복받았다.",
+            relatedVerse = "창세기 49:20",
+            relatedVerseText = "아셀에게서 나는 먹을 것은 기름진 것이라 그가 왕의 진수를 공급하리로다",
+        ),
+        StudyCard(
+            tag = "어머니 레아 · 이름의 뜻: 삯, 보상",
+            title = "잇사갈",
+            meaning = "힘센 나귀 같이 인내하며 노동하는 지파로 묘사되었다.",
+            relatedVerse = "창세기 49:14-15",
+            relatedVerseText = "잇사갈은 양 우리 사이에 꿇어앉은 건장한 나귀로다 그는 쉴 곳을 보고 좋게 여기며 토지를 보고 아름답게 여기고 어깨를 내려 짐을 메고 압제 아래에서 섬기리로다",
+        ),
+        StudyCard(
+            tag = "어머니 레아 · 이름의 뜻: 거처",
+            title = "스불론",
+            meaning = "해변에 거하며 배가 대는 해안에 사는 지파로 예언되었다.",
+            relatedVerse = "창세기 49:13",
+            relatedVerseText = "스불론은 해변에 거하리니 그 곳은 배 매는 해변이라 그의 경계가 시돈까지리로다",
+        ),
+        StudyCard(
+            tag = "어머니 라헬 · 이름의 뜻: 더하심",
+            title = "요셉 (에브라임/므낫세)",
+            meaning = "야곱의 가장 큰 축복을 받았다. 두 아들 에브라임과 므낫세가 각각 한 지파가 되었다. 전능자의 축복으로 풍성함을 누리리라 예언되었다.",
+            relatedVerse = "창세기 49:22-26",
+            relatedVerseText = "요셉은 무성한 가지 곧 샘 곁의 무성한 가지라 그 가지가 담을 넘었도다 ... 네 아버지의 축복이 내 선조의 축복보다 나아서 영원한 산이 한 없음 같이 이것이 요셉의 머리에 있으며",
+        ),
+        StudyCard(
+            tag = "어머니 라헬 · 이름의 뜻: 오른손의 아들",
+            title = "베냐민",
+            meaning = "이리 같이 물어뜯는 용맹한 지파로 예언되었다. 사울 왕과 사도 바울이 이 지파 출신이다.",
+            relatedVerse = "창세기 49:27",
+            relatedVerseText = "베냐민은 물어뜯는 이리라 아침에는 빼앗은 것을 먹고 저녁에는 움킨 것을 나누리로다",
+        ),
+    ),
+)

@@ -47,6 +47,7 @@
     <string name="bible_reader_title_fallback">성경</string>
     <string name="bible_reader_chapter_title">%1$s %2$d장</string>
     <string name="bible_chapter_select_label">장 선택</string>
+    <string name="static_content_links_title_fallback">바로가기</string>
     <string name="bible_chapter_read_legend">읽은 장은 색으로 표시됩니다</string>
     <string name="bible_reader_verse_number">%1$d절</string>
     <string name="bible_reader_highlight_label">하이라이트</string>

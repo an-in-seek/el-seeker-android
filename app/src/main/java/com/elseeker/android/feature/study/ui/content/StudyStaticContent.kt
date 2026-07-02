@@ -27,6 +27,13 @@ data class StudyCard(
     val relatedVerseText: String? = null,
 )
 
+/** 외부 위임 링크(드라마바이블·개요 영상·주석 사이트 등). Custom Tabs 로 연다(PRD 외부 위임). */
+data class StudyLink(
+    val title: String,
+    val url: String,
+    val subtitle: String? = null,
+)
+
 data class StudyContentItem(
     val key: String,
     val title: String,
@@ -39,6 +46,8 @@ data class StudyContentItem(
     val history: List<StudySection> = emptyList(),
     val cardsTitle: String? = null,
     val cards: List<StudyCard> = emptyList(),
+    val linksTitle: String? = null,
+    val links: List<StudyLink> = emptyList(),
 )
 
 object StudyStaticContent {
@@ -409,17 +418,18 @@ object StudyStaticContent {
                 ),
             ),
         ),
-        // 원본(백엔드 static/js/study, HistoryDummyData) 추출 대기 — 준비중으로 안내
-        StudyContentItem("creation", "창조", "창세기 1–2장", StudyTrack.S1, ready = false),
-        StudyContentItem("holy-week", "성주간", "고난주간 일정", StudyTrack.S1, ready = false),
-        StudyContentItem("twelve-disciples", "12제자", "예수의 열두 제자", StudyTrack.S1, ready = false),
-        StudyContentItem("twelve-tribes", "12지파", "이스라엘 열두 지파", StudyTrack.S1, ready = false),
-        StudyContentItem("public-reading", "공동체 성경읽기", "통독 가이드", StudyTrack.S1, ready = false),
-        StudyContentItem("commentary", "성경 주석", "본문 주석", StudyTrack.S1, ready = false),
-        StudyContentItem("history", "성경 역사", "연대·사건·상세", StudyTrack.S1, ready = false),
-        // --- S2: 분리 트랙 (족보·개요영상) — 준비중 (PRD §4-A.7) ---
+        // 원본 데이터를 별도 파일로 이식한 항목들(같은 패키지의 *Content.kt).
+        creationContent,
+        holyWeekContent,
+        twelveDisciplesContent,
+        twelveTribesContent,
+        publicReadingContent,
+        commentaryContent,
+        historyContent,
+        // --- S2: 분리 트랙 (PRD §4-A.7) ---
+        // 족보(세로 타임라인)는 전용 렌더러가 필요해 준비중 유지 — v1.0.x 패스트팔로우.
         StudyContentItem("genealogy", "족보", "마태·누가 세로 타임라인", StudyTrack.S2, ready = false),
-        StudyContentItem("overview-video", "성경 개요 영상", "66권 개요 영상", StudyTrack.S2, ready = false),
+        overviewVideoContent,
     )
 
     fun byKey(key: String): StudyContentItem? = items.firstOrNull { it.key == key }

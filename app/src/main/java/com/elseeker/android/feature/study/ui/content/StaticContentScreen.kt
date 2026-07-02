@@ -1,8 +1,10 @@
 package com.elseeker.android.feature.study.ui.content
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -23,15 +26,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.openExternalUrl
 
 /**
  * 학습 정적 콘텐츠 공통 렌더러. [contentKey] 로 카탈로그를 조회해
- * 전문 → 유래·역사 → 묵상 카드 순으로(원본 웹 페이지와 동일한 구성) 렌더링하고,
+ * 전문 → 유래·역사 → 묵상 카드 → 외부 링크 순으로(원본 웹 페이지와 동일한 구성) 렌더링하고,
  * 아직 원본 데이터가 없는 항목(ready=false)은 "준비 중" 안내를 표시한다.
+ * 외부 링크(유튜브·주석 사이트)는 Custom Tabs 로 위임한다(PRD 외부 위임).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,8 +79,10 @@ fun StaticContentScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                 }
-                // 전문 — 원본의 full-text 블록.
-                item { FullTextCard(content.paragraphs) }
+                // 전문 — 원본의 full-text 블록(링크형 콘텐츠 등 전문이 없는 항목은 생략).
+                if (content.paragraphs.isNotEmpty()) {
+                    item { FullTextCard(content.paragraphs) }
+                }
                 // 유래·역사 해설.
                 if (content.history.isNotEmpty()) {
                     item {
@@ -107,7 +115,56 @@ fun StaticContentScreen(
                         MeditationCard(card)
                     }
                 }
+                // 외부 위임 링크(드라마바이블·개요 영상·주석 사이트) — Custom Tabs.
+                if (content.links.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(24.dp))
+                        SectionHeader(content.linksTitle ?: stringResource(R.string.static_content_links_title_fallback))
+                    }
+                    items(content.links) { link ->
+                        Spacer(Modifier.height(8.dp))
+                        LinkCard(link)
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun LinkCard(link: StudyLink) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { openExternalUrl(context, link.url) },
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = link.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (!link.subtitle.isNullOrBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = link.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
