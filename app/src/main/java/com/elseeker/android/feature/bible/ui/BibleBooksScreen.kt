@@ -40,6 +40,9 @@ fun BibleBooksScreen(
         // nullable 수신자 재참조를 피하려 non-null 지역 변수로 호이스팅(스마트캐스트 안전).
         val translation = data.translation ?: return@ResourceContent
         val translationId = translation.translationId
+        // LazyGridScope 는 컴포저블 컨텍스트가 아니므로 stringResource 를 밖에서 해석한다.
+        val oldTestamentLabel = stringResource(R.string.bible_books_old_testament)
+        val newTestamentLabel = stringResource(R.string.bible_books_new_testament)
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
             modifier = Modifier.fillMaxSize(),
@@ -48,8 +51,8 @@ fun BibleBooksScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             sectionHeader(translation.translationName)
-            section(stringResource(R.string.bible_books_old_testament), data.oldTestament, translationId, onBookClick)
-            section(stringResource(R.string.bible_books_new_testament), data.newTestament, translationId, onBookClick)
+            section(oldTestamentLabel, data.oldTestament, translationId, onBookClick)
+            section(newTestamentLabel, data.newTestament, translationId, onBookClick)
         }
     }
 }
