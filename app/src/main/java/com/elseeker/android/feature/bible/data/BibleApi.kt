@@ -112,6 +112,43 @@ interface BibleApi {
         @Path("verseNumber") verseNumber: Int,
     ): Response<Unit>
 
+    // --- 인증 필요: 장/책 메모 --------------------------------------------
+
+    @PUT("api/v1/bibles/translations/{translationId}/books/{bookOrder}/chapters/{chapterNumber}/chapter-memo")
+    suspend fun putChapterMemo(
+        @Path("translationId") translationId: Long,
+        @Path("bookOrder") bookOrder: Int,
+        @Path("chapterNumber") chapterNumber: Int,
+        @Body body: MemoRequest,
+    ): ChapterMemoItemDto
+
+    @DELETE("api/v1/bibles/translations/{translationId}/books/{bookOrder}/chapters/{chapterNumber}/chapter-memo")
+    suspend fun deleteChapterMemo(
+        @Path("translationId") translationId: Long,
+        @Path("bookOrder") bookOrder: Int,
+        @Path("chapterNumber") chapterNumber: Int,
+    ): Response<Unit>
+
+    /** 책 메모 조회 — 메모가 없으면 204(본문 없음). */
+    @GET("api/v1/bibles/translations/{translationId}/books/{bookOrder}/book-memo")
+    suspend fun bookMemo(
+        @Path("translationId") translationId: Long,
+        @Path("bookOrder") bookOrder: Int,
+    ): Response<BookMemoItemDto>
+
+    @PUT("api/v1/bibles/translations/{translationId}/books/{bookOrder}/book-memo")
+    suspend fun putBookMemo(
+        @Path("translationId") translationId: Long,
+        @Path("bookOrder") bookOrder: Int,
+        @Body body: MemoRequest,
+    ): BookMemoItemDto
+
+    @DELETE("api/v1/bibles/translations/{translationId}/books/{bookOrder}/book-memo")
+    suspend fun deleteBookMemo(
+        @Path("translationId") translationId: Long,
+        @Path("bookOrder") bookOrder: Int,
+    ): Response<Unit>
+
     // --- 인증 필요: 읽기 진도 (단수형 base) -------------------------------
 
     @POST("api/v1/bible/reading/chapters/read")

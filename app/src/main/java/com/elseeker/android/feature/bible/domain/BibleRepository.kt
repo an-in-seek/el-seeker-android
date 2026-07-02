@@ -6,6 +6,8 @@ import com.elseeker.android.feature.bible.data.BibleApi
 import com.elseeker.android.feature.bible.data.BibleSearchSliceDto
 import com.elseeker.android.feature.bible.data.BookDetailDto
 import com.elseeker.android.feature.bible.data.BookDto
+import com.elseeker.android.feature.bible.data.BookMemoItemDto
+import com.elseeker.android.feature.bible.data.ChapterMemoItemDto
 import com.elseeker.android.feature.bible.data.ChapterStateDto
 import com.elseeker.android.feature.bible.data.ChaptersDto
 import com.elseeker.android.feature.bible.data.HighlightItemDto
@@ -136,6 +138,49 @@ class BibleRepository @Inject constructor(
         safeApiCall(json) {
             bibleApi.deleteVerseMemo(translationId, bookOrder, chapterNumber, verseNumber).orThrow()
         }
+        Unit
+    }
+
+    // --- 장/책 메모 (인증 필요) --------------------------------------------
+
+    suspend fun putChapterMemo(
+        translationId: Long,
+        bookOrder: Int,
+        chapterNumber: Int,
+        content: String,
+    ): Result<ChapterMemoItemDto> = runCatching {
+        safeApiCall(json) {
+            bibleApi.putChapterMemo(translationId, bookOrder, chapterNumber, MemoRequest(content))
+        }
+    }
+
+    suspend fun deleteChapterMemo(
+        translationId: Long,
+        bookOrder: Int,
+        chapterNumber: Int,
+    ): Result<Unit> = runCatching {
+        safeApiCall(json) {
+            bibleApi.deleteChapterMemo(translationId, bookOrder, chapterNumber).orThrow()
+        }
+        Unit
+    }
+
+    /** 책 메모 조회. 메모가 없으면 서버가 204 → null. */
+    suspend fun bookMemo(translationId: Long, bookOrder: Int): Result<BookMemoItemDto?> =
+        runCatching {
+            safeApiCall(json) { bibleApi.bookMemo(translationId, bookOrder).orThrow() }.body()
+        }
+
+    suspend fun putBookMemo(
+        translationId: Long,
+        bookOrder: Int,
+        content: String,
+    ): Result<BookMemoItemDto> = runCatching {
+        safeApiCall(json) { bibleApi.putBookMemo(translationId, bookOrder, MemoRequest(content)) }
+    }
+
+    suspend fun deleteBookMemo(translationId: Long, bookOrder: Int): Result<Unit> = runCatching {
+        safeApiCall(json) { bibleApi.deleteBookMemo(translationId, bookOrder).orThrow() }
         Unit
     }
 

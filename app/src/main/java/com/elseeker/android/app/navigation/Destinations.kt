@@ -17,9 +17,12 @@ object Routes {
     const val STUDY = "study"
     const val MY = "my"
 
-    // Bible 본문 뷰어 (성경 탭에서 push)
+    // Bible 하위 라우트 — 웹과 동일한 4단계: 번역본(BIBLE 탭 루트) → 책 → 장 → 절.
+    const val BIBLE_BOOKS = "bible/books/{translationId}"
     const val BIBLE_READER = "bible/reader/{translationId}/{bookOrder}/{chapterNumber}"
     const val BIBLE_BOOK_OVERVIEW = "bible/book/{translationId}/{bookOrder}"
+
+    fun bibleBooks(translationId: Long) = "bible/books/$translationId"
     // keyword 는 홈 인기 검색어 → 검색 화면 프리필용 옵션 인자.
     const val BIBLE_SEARCH = "bible/search?keyword={keyword}"
 

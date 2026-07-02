@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.elseeker.android.core.auth.SessionManager
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.core.ui.toUiError
+import com.elseeker.android.feature.bible.data.ChapterMemoItemDto
 import com.elseeker.android.feature.bible.data.VersesDto
 import com.elseeker.android.feature.bible.domain.BibleNav
 import com.elseeker.android.feature.bible.domain.BibleRepository
@@ -23,7 +24,8 @@ class BibleReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val translationId: Long = savedStateHandle.get<String>("translationId")?.toLongOrNull() ?: 0L
+    // 하단 고정 내비의 '장 선택' 이동(onOpenChapterList) 등 화면에서 필요로 해 공개.
+    val translationId: Long = savedStateHandle.get<String>("translationId")?.toLongOrNull() ?: 0L
     private val initialBookOrder: Int = savedStateHandle.get<String>("bookOrder")?.toIntOrNull() ?: 1
     private val initialChapter: Int = savedStateHandle.get<String>("chapterNumber")?.toIntOrNull() ?: 1
 
@@ -37,6 +39,14 @@ class BibleReaderViewModel @Inject constructor(
     private val _memos = MutableStateFlow<Map<Int, String>>(emptyMap())
     val memos: StateFlow<Map<Int, String>> = _memos.asStateFlow()
 
+    // 장 메모(절 메모와 별개, 장 단위 1개) — 인증 필요. 없으면 null.
+    private val _chapterMemo = MutableStateFlow<ChapterMemoItemDto?>(null)
+    val chapterMemo: StateFlow<ChapterMemoItemDto?> = _chapterMemo.asStateFlow()
+
+    // 이 장을 읽음으로 기록했는지. 웹과 동일하게 자동 기록 없이 '읽음' 버튼으로만 갱신한다.
+    private val _isRead = MutableStateFlow(false)
+    val isRead: StateFlow<Boolean> = _isRead.asStateFlow()
+
     // 오류 상태에서도 재시도할 수 있도록 마지막 시도 좌표를 보관한다.
     private var lastBookOrder: Int = initialBookOrder
     private var lastChapter: Int = initialChapter
@@ -44,7 +54,7 @@ class BibleReaderViewModel @Inject constructor(
     // 마지막 시도가 이전/다음 장 이동이었다면 그 방향을 보관해 재시도 시 같은 이동을 다시 수행한다.
     private var pendingDirection: String? = null
 
-    // 장 상태 응답의 유효 세대. 사용자 조작(하이라이트/메모)이나 장 전환이 일어나면 증가시켜
+    // 장 상태 응답의 유효 세대. 사용자 조작(하이라이트/메모/읽음)이나 장 전환이 일어나면 증가시켜
     // 그 이전에 시작된 인플라이트 chapterState 응답이 낙관적 갱신을 덮어쓰지 못하게 한다.
     private var chapterStateGeneration = 0
 
@@ -52,7 +62,7 @@ class BibleReaderViewModel @Inject constructor(
     private val hasAuthSession: Boolean
         get() = sessionManager.hasSession() && !sessionManager.isSignupSession
 
-    /** 게스트는 하이라이트/메모를 쓸 수 없다(웹과 동일 — 보호 API). 화면이 절 탭 시 확인. */
+    /** 게스트는 하이라이트/메모/읽음 기록을 쓸 수 없다(웹과 동일 — 보호 API). 화면이 액션 전 확인. */
     val canAnnotate: Boolean
         get() = hasAuthSession
 
@@ -63,10 +73,12 @@ class BibleReaderViewModel @Inject constructor(
         lastBookOrder = bookOrder
         lastChapter = chapterNumber
         _state.value = UiResource.Loading
-        // 이전 장의 하이라이트/메모가 잔상으로 보이지 않도록 초기화(인플라이트 응답도 무효화).
+        // 이전 장의 하이라이트/메모/장 메모/읽음 상태가 잔상으로 보이지 않도록 초기화(인플라이트 응답도 무효화).
         chapterStateGeneration++
         _highlights.value = emptyMap()
         _memos.value = emptyMap()
+        _chapterMemo.value = null
+        _isRead.value = false
         viewModelScope.launch {
             repository.verses(translationId, bookOrder, chapterNumber)
                 .onSuccess { onLoaded(it) }
@@ -108,16 +120,11 @@ class BibleReaderViewModel @Inject constructor(
         lastBookOrder = bookOrder
         lastChapter = chapterNumber
         _state.value = UiResource.Success(verses)
-        // 읽기 진도 기록(인증 필요). 미인증이면 호출하지 않고, 실패는 본문 읽기를 막지 않으므로 무시.
-        if (hasAuthSession) {
-            viewModelScope.launch {
-                repository.markChapterRead(translationId, bookOrder, chapterNumber)
-            }
-        }
+        // 읽기 진도는 더 이상 자동 기록하지 않는다(웹과 동일 — '읽음' 버튼을 눌렀을 때만 markRead() 호출).
         loadChapterState(bookOrder, chapterNumber)
     }
 
-    /** 장 상태(하이라이트·메모) 로드. 인증 세션이 없으면 호출 자체를 생략(빈 맵 유지). */
+    /** 장 상태(하이라이트·절 메모·장 메모·읽음) 로드. 인증 세션이 없으면 호출 자체를 생략(기본값 유지). */
     private fun loadChapterState(bookOrder: Int, chapterNumber: Int) {
         if (!hasAuthSession) return
         val generation = ++chapterStateGeneration
@@ -127,11 +134,15 @@ class BibleReaderViewModel @Inject constructor(
                     if (generation != chapterStateGeneration) return@onSuccess
                     _highlights.value = st.highlights.associate { it.verseNumber to it.color }
                     _memos.value = st.memos.associate { it.verseNumber to it.content }
+                    _chapterMemo.value = st.chapterMemo
+                    _isRead.value = st.isRead
                 }
                 .onFailure {
                     if (generation != chapterStateGeneration) return@onFailure
                     _highlights.value = emptyMap()
                     _memos.value = emptyMap()
+                    _chapterMemo.value = null
+                    _isRead.value = false
                 }
         }
     }
@@ -177,6 +188,54 @@ class BibleReaderViewModel @Inject constructor(
                     .onSuccess { _memos.value = _memos.value + (verseNumber to trimmed) }
                     .onFailure { loadChapterState(book, chapter) }
             }
+        }
+    }
+
+    /** 장 메모 저장. 성공 시 [onSaved] 로 다이얼로그 닫기 등 후속 UI 처리를 위임한다. */
+    fun saveChapterMemo(content: String, onSaved: () -> Unit = {}) {
+        val trimmed = content.trim()
+        if (trimmed.isBlank()) return
+        val book = lastBookOrder
+        val chapter = lastChapter
+        chapterStateGeneration++
+        viewModelScope.launch {
+            repository.putChapterMemo(translationId, book, chapter, trimmed)
+                .onSuccess {
+                    _chapterMemo.value = it
+                    onSaved()
+                }
+                .onFailure { loadChapterState(book, chapter) }
+        }
+    }
+
+    /** 장 메모 삭제. 성공 시 [onDeleted] 로 다이얼로그 닫기 등 후속 UI 처리를 위임한다. */
+    fun deleteChapterMemo(onDeleted: () -> Unit = {}) {
+        val book = lastBookOrder
+        val chapter = lastChapter
+        chapterStateGeneration++
+        viewModelScope.launch {
+            repository.deleteChapterMemo(translationId, book, chapter)
+                .onSuccess {
+                    _chapterMemo.value = null
+                    onDeleted()
+                }
+                .onFailure { loadChapterState(book, chapter) }
+        }
+    }
+
+    /** 이 장을 읽음으로 명시적 기록(웹과 동일 — 버튼 탭 시에만 호출). 이미 읽음이면 아무 동작 안 함. */
+    fun markRead(onMarked: () -> Unit = {}) {
+        if (_isRead.value) return
+        val book = lastBookOrder
+        val chapter = lastChapter
+        chapterStateGeneration++
+        viewModelScope.launch {
+            repository.markChapterRead(translationId, book, chapter)
+                .onSuccess {
+                    _isRead.value = true
+                    onMarked()
+                }
+                .onFailure { loadChapterState(book, chapter) }
         }
     }
 }

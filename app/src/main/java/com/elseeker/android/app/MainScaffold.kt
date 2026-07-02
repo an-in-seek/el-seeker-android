@@ -36,6 +36,7 @@ import com.elseeker.android.core.auth.AuthState
 import com.elseeker.android.feature.auth.ui.LoginScreen
 import com.elseeker.android.feature.bible.ui.BibleBookOverviewScreen
 import com.elseeker.android.feature.bible.ui.BibleBooksScreen
+import com.elseeker.android.feature.bible.ui.TranslationListScreen
 import com.elseeker.android.feature.bible.ui.BibleReaderScreen
 import com.elseeker.android.feature.bible.ui.BibleSearchScreen
 import com.elseeker.android.feature.bible.ui.MyMemosScreen
@@ -151,8 +152,20 @@ fun MainScaffold(
                 .padding(inner),
         ) {
             composable(Routes.HOME) { HomeScreen(onNavigate = navigateRoute) }
+            // 성경 탭 루트 = 번역본 목록(웹 /web/bible/translation 과 동일).
             composable(Routes.BIBLE) {
+                TranslationListScreen(
+                    onTranslationClick = { translationId ->
+                        navController.navigate(Routes.bibleBooks(translationId))
+                    },
+                )
+            }
+            composable(
+                route = Routes.BIBLE_BOOKS,
+                arguments = listOf(navArgument("translationId") { type = NavType.StringType }),
+            ) {
                 BibleBooksScreen(
+                    onBack = { navController.popBackStack() },
                     onBookClick = { translationId, bookOrder ->
                         navController.navigate(Routes.bibleBookOverview(translationId, bookOrder))
                     },
@@ -276,6 +289,15 @@ fun MainScaffold(
                     onChapterClick = { chapter ->
                         navController.navigate(Routes.bibleReader(tid, book, chapter))
                     },
+                    // 하단 내비 중앙(📖 책 선택) → 책 목록.
+                    onSelectBook = { navController.navigate(Routes.bibleBooks(tid)) },
+                    // 이전/다음 책 — 현재 장 목록을 새 책으로 교체(replace).
+                    onSwitchBook = { newBookOrder ->
+                        navController.navigate(Routes.bibleBookOverview(tid, newBookOrder)) {
+                            popUpTo(Routes.BIBLE_BOOK_OVERVIEW) { inclusive = true }
+                        }
+                    },
+                    onOpenContent = { key -> navController.navigate(Routes.studyContent(key)) },
                 )
             }
             composable(
@@ -304,7 +326,13 @@ fun MainScaffold(
                     navArgument("chapterNumber") { type = NavType.StringType },
                 ),
             ) {
-                BibleReaderScreen(onBack = { navController.popBackStack() })
+                BibleReaderScreen(
+                    onBack = { navController.popBackStack() },
+                    // 하단 내비 중앙(📖 장 선택) → 해당 책의 장 목록.
+                    onOpenChapterList = { tid, book ->
+                        navController.navigate(Routes.bibleBookOverview(tid, book))
+                    },
+                )
             }
         }
     }
