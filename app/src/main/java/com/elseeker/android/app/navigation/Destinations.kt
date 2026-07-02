@@ -1,5 +1,6 @@
 package com.elseeker.android.app.navigation
 
+import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
@@ -19,7 +20,8 @@ object Routes {
     // Bible 본문 뷰어 (성경 탭에서 push)
     const val BIBLE_READER = "bible/reader/{translationId}/{bookOrder}/{chapterNumber}"
     const val BIBLE_BOOK_OVERVIEW = "bible/book/{translationId}/{bookOrder}"
-    const val BIBLE_SEARCH = "bible/search"
+    // keyword 는 홈 인기 검색어 → 검색 화면 프리필용 옵션 인자.
+    const val BIBLE_SEARCH = "bible/search?keyword={keyword}"
 
     fun bibleReader(translationId: Long, bookOrder: Int, chapterNumber: Int) =
         "bible/reader/$translationId/$bookOrder/$chapterNumber"
@@ -27,10 +29,18 @@ object Routes {
     fun bibleBookOverview(translationId: Long, bookOrder: Int) =
         "bible/book/$translationId/$bookOrder"
 
+    fun bibleSearch(keyword: String? = null) =
+        if (keyword.isNullOrBlank()) "bible/search"
+        else "bible/search?keyword=${Uri.encode(keyword)}"
+
     // 학습 하위 라우트 (학습 탭에서 push)
-    const val STUDY_DICTIONARY = "study/dictionary"
+    const val STUDY_DICTIONARY = "study/dictionary?keyword={keyword}"
     const val STUDY_DICTIONARY_DETAIL = "study/dictionary/{id}"
     const val STUDY_CONTENT = "study/content/{contentKey}"
+
+    fun studyDictionary(keyword: String? = null) =
+        if (keyword.isNullOrBlank()) "study/dictionary"
+        else "study/dictionary?keyword=${Uri.encode(keyword)}"
 
     fun studyDictionaryDetail(id: Long) = "study/dictionary/$id"
     fun studyContent(contentKey: String) = "study/content/$contentKey"

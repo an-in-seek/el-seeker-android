@@ -111,15 +111,27 @@
     <string name="static_content_related_verse">함께 읽기 · %1$s</string>
 
     <!-- Home -->
-    <string name="home_menu_label">메뉴</string>
-    <string name="home_daily_verse_loading">오늘의 말씀을 불러오는 중…</string>
-    <string name="home_daily_verse_label">오늘의 말씀</string>
-    <string name="home_hero_subtitle">말씀과 함께하는 성경 학습</string>
-    <string name="home_menu_bible_read">성경 읽기</string>
-    <string name="home_menu_bible_search">성경 검색</string>
+    <!-- 웹 index.html 과 동일한 홈 구성 -->
+    <string name="home_hero_title">하나님의 말씀</string>
+    <string name="home_hero_sub">예수께서 이르시되 이 성경이 곧 내게 대하여 증언하는 것이니라. (요한복음 5:39)</string>
+    <string name="home_hero_cta">성경 읽기 시작</string>
+    <string name="home_search_placeholder">성경 구절·책·사전·메뉴 한 번에 검색</string>
+    <string name="home_menu_bible">성경</string>
+    <string name="home_menu_bible_en">Bible</string>
+    <string name="home_menu_bible_desc">성경 번역본과 본문을 살펴봅니다.</string>
     <string name="home_menu_study">학습</string>
-    <string name="home_menu_dictionary">성경 사전</string>
-    <string name="home_menu_my">마이</string>
+    <string name="home_menu_study_en">Study</string>
+    <string name="home_menu_study_desc">성경을 이해하고 배우는 공간입니다.</string>
+    <string name="home_menu_game">게임</string>
+    <string name="home_menu_game_en">Games</string>
+    <string name="home_menu_game_desc">재미있는 게임을 통해 성경을 배웁니다.</string>
+    <string name="home_menu_community">커뮤니티</string>
+    <string name="home_menu_community_en">Community</string>
+    <string name="home_menu_community_desc">성경에 대한 질문과 나눔으로 함께합니다.</string>
+    <string name="home_popular_bible_title">성경 구절 인기 검색어</string>
+    <string name="home_popular_dictionary_title">성경 사전 인기 검색어</string>
+    <string name="home_universe_verse">태초에 하나님이\n천지를 창조하시니라</string>
+    <string name="home_universe_cta">7일 창조 이야기 체험하기</string>
 
     <!-- My -->
     <string name="my_nav_profile_edit">프로필 수정</string>

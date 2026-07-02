@@ -1,5 +1,6 @@
 package com.elseeker.android.feature.bible.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elseeker.android.core.ui.UiResource
@@ -18,7 +19,11 @@ import javax.inject.Inject
 @HiltViewModel
 class BibleSearchViewModel @Inject constructor(
     private val repository: BibleRepository,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    // 홈 인기 검색어 등에서 전달된 초기 검색어(옵션).
+    private val initialKeyword: String? = savedStateHandle.get<String>("keyword")
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -40,6 +45,11 @@ class BibleSearchViewModel @Inject constructor(
 
     init {
         loadDefaults()
+        // 프리필 키워드가 있으면 즉시 검색(웹 /web/bible/search?keyword= 과 동일).
+        if (!initialKeyword.isNullOrBlank()) {
+            _query.value = initialKeyword
+            search()
+        }
     }
 
     private fun loadDefaults() {

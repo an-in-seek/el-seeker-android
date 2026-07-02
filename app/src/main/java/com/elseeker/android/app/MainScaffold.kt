@@ -160,7 +160,7 @@ fun MainScaffold(
             }
             composable(Routes.STUDY) {
                 StudyScreen(
-                    onOpenDictionary = { navController.navigate(Routes.STUDY_DICTIONARY) },
+                    onOpenDictionary = { navController.navigate(Routes.studyDictionary()) },
                     onOpenContent = { key -> navController.navigate(Routes.studyContent(key)) },
                 )
             }
@@ -231,7 +231,16 @@ fun MainScaffold(
                 )
             }
 
-            composable(Routes.STUDY_DICTIONARY) {
+            composable(
+                route = Routes.STUDY_DICTIONARY,
+                arguments = listOf(
+                    navArgument("keyword") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) {
                 DictionaryListScreen(
                     onItemClick = { id -> navController.navigate(Routes.studyDictionaryDetail(id)) },
                     onBack = { navController.popBackStack() },
@@ -269,7 +278,16 @@ fun MainScaffold(
                     },
                 )
             }
-            composable(Routes.BIBLE_SEARCH) {
+            composable(
+                route = Routes.BIBLE_SEARCH,
+                arguments = listOf(
+                    navArgument("keyword") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) {
                 BibleSearchScreen(
                     onBack = { navController.popBackStack() },
                     onResultClick = { tid, book, chapter ->

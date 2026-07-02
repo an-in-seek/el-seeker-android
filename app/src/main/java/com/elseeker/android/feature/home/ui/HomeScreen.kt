@@ -5,201 +5,375 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Book
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.annotation.StringRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.elseeker.android.BuildConfig
 import com.elseeker.android.R
 import com.elseeker.android.app.navigation.Routes
-import com.elseeker.android.core.ui.UiResource
-import com.elseeker.android.feature.bible.data.DailyVerseDto
+import com.elseeker.android.core.ui.openExternalUrl
+import kotlinx.coroutines.delay
 
-/** 홈 탭: 경량 브랜딩 히어로 + 오늘의 말씀 + 메뉴 그리드(진입 허브). */
+/**
+ * 홈 탭 — 웹 `templates/index.html` 과 동일한 구성:
+ * 히어로 캐러셀(2장) → 통합 검색바 → 메뉴 카드(성경/학습/게임/커뮤니티)
+ * → 인기 검색어 2카드(구절/사전) → 창조 섹션("태초에…").
+ * 게임·커뮤니티는 v1 네이티브 범위 밖이라 웹과 동일 화면을 Custom Tabs 로 위임하고,
+ * 3D 우주 캔버스는 그라데이션 섹션으로 대체한다(PRD §4-A.4-1 경량 비주얼).
+ */
 @Composable
 fun HomeScreen(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val bibleRanking by viewModel.bibleRanking.collectAsStateWithLifecycle()
+    val dictionaryRanking by viewModel.dictionaryRanking.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val baseUrl = BuildConfig.BASE_URL.trimEnd('/')
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // 히어로 (3D 우주 대체 경량 비주얼 — PRD §4-A.4-1)
-        item(span = { GridItemSpan(maxLineSpan) }) { HeroBanner() }
+        // 1) 히어로 캐러셀 (home-hero)
+        item { HeroCarousel(baseUrl = baseUrl, onCta = { onNavigate(Routes.BIBLE) }) }
 
-        // 오늘의 말씀 — 로딩/오류 시에도 홈 레이아웃을 막지 않도록 카드 내부에서만 분기
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            when (val s = state) {
-                is UiResource.Success -> DailyVerseCard(s.data)
-                is UiResource.Error -> DailyVersePlaceholder(s.message)
-                UiResource.Loading -> DailyVersePlaceholder(stringResource(R.string.home_daily_verse_loading))
+        // 2) 통합 검색바 (home-unified-search) — v1 은 성경 절 검색으로 위임.
+        item { UnifiedSearchBar(onClick = { onNavigate(Routes.bibleSearch()) }) }
+
+        // 3) 메뉴 카드 (home-menu-grid) — 모바일 웹과 동일한 가로형 풀폭 카드.
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                HomeMenuCard(
+                    emoji = "📖",
+                    title = stringResource(R.string.home_menu_bible),
+                    titleEn = stringResource(R.string.home_menu_bible_en),
+                    description = stringResource(R.string.home_menu_bible_desc),
+                    onClick = { onNavigate(Routes.BIBLE) },
+                )
+                HomeMenuCard(
+                    emoji = "📚",
+                    title = stringResource(R.string.home_menu_study),
+                    titleEn = stringResource(R.string.home_menu_study_en),
+                    description = stringResource(R.string.home_menu_study_desc),
+                    onClick = { onNavigate(Routes.STUDY) },
+                )
+                HomeMenuCard(
+                    emoji = "🎮",
+                    title = stringResource(R.string.home_menu_game),
+                    titleEn = stringResource(R.string.home_menu_game_en),
+                    description = stringResource(R.string.home_menu_game_desc),
+                    onClick = { openExternalUrl(context, "$baseUrl/web/game") },
+                )
+                HomeMenuCard(
+                    emoji = "💬",
+                    title = stringResource(R.string.home_menu_community),
+                    titleEn = stringResource(R.string.home_menu_community_en),
+                    description = stringResource(R.string.home_menu_community_desc),
+                    onClick = { openExternalUrl(context, "$baseUrl/web/community") },
+                )
             }
         }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Text(
-                text = stringResource(R.string.home_menu_label),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+        // 4) 인기 검색어 (home-popular-search) — 웹처럼 데이터 없으면 카드 숨김.
+        if (bibleRanking.isNotEmpty()) {
+            item {
+                PopularSearchCard(
+                    title = stringResource(R.string.home_popular_bible_title),
+                    items = bibleRanking.map { it.rank to it.keyword },
+                    onKeywordClick = { keyword -> onNavigate(Routes.bibleSearch(keyword)) },
+                )
+            }
+        }
+        if (dictionaryRanking.isNotEmpty()) {
+            item {
+                PopularSearchCard(
+                    title = stringResource(R.string.home_popular_dictionary_title),
+                    items = dictionaryRanking.map { it.rank to it.keyword },
+                    onKeywordClick = { keyword -> onNavigate(Routes.studyDictionary(keyword)) },
+                )
+            }
         }
 
-        items(HOME_MENU, key = { it.route }) { entry ->
-            MenuCard(entry = entry, onClick = { onNavigate(entry.route) })
-        }
-
-        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(8.dp)) }
+        // 5) 창조 섹션 (universe-section) — 3D 캔버스 대신 그라데이션.
+        item { UniverseSection(onCta = { onNavigate(Routes.studyContent("creation")) }) }
     }
 }
 
-private data class HomeMenuEntry(@StringRes val labelRes: Int, val icon: ImageVector, val route: String)
-
-private val HOME_MENU = listOf(
-    HomeMenuEntry(R.string.home_menu_bible_read, Icons.AutoMirrored.Outlined.MenuBook, Routes.BIBLE),
-    HomeMenuEntry(R.string.home_menu_bible_search, Icons.Outlined.Search, Routes.BIBLE_SEARCH),
-    HomeMenuEntry(R.string.home_menu_study, Icons.Outlined.School, Routes.STUDY),
-    HomeMenuEntry(R.string.home_menu_dictionary, Icons.Outlined.Book, Routes.STUDY_DICTIONARY),
-    HomeMenuEntry(R.string.home_menu_my, Icons.Outlined.Person, Routes.MY),
-)
+private val HERO_IMAGES = listOf("/images/thebible1.png", "/images/thebible2.png")
 
 @Composable
-private fun HeroBanner() {
+private fun HeroCarousel(baseUrl: String, onCta: () -> Unit) {
+    val pagerState = rememberPagerState(pageCount = { HERO_IMAGES.size })
+
+    // 웹 캐러셀처럼 자동 롤링.
+    LaunchedEffect(pagerState) {
+        while (true) {
+            delay(5000)
+            pagerState.animateScrollToPage((pagerState.currentPage + 1) % HERO_IMAGES.size)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
+            .height(220.dp)
+            .clip(RoundedCornerShape(16.dp)),
+    ) {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+            AsyncImage(
+                model = "$baseUrl${HERO_IMAGES[page]}",
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        // 오버레이 — 텍스트 가독성 확보(home-hero-overlay).
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.40f)),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(horizontal = 20.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.home_hero_title),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.home_hero_sub),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.9f),
+            )
+            Spacer(Modifier.height(14.dp))
+            Button(onClick = onCta) {
+                Text(stringResource(R.string.home_hero_cta))
+                Spacer(Modifier.width(4.dp))
+                Text("›", fontWeight = FontWeight.Bold)
+            }
+        }
+        // 인디케이터 점(home-hero-indicators).
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            repeat(HERO_IMAGES.size) { index ->
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (pagerState.currentPage == index) Color.White
+                            else Color.White.copy(alpha = 0.45f),
+                        ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnifiedSearchBar(onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(28.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.home_search_placeholder),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeMenuCard(
+    emoji: String,
+    title: String,
+    titleEn: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = emoji, fontSize = 28.sp)
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = titleEn,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PopularSearchCard(
+    title: String,
+    items: List<Pair<Int, String>>,
+    onKeywordClick: (String) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(8.dp))
+            items.forEach { (rank, keyword) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onKeywordClick(keyword) }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = rank.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(24.dp),
+                    )
+                    Text(
+                        text = keyword,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UniverseSection(onCta: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.primaryContainer,
-                    ),
+                    listOf(Color(0xFF060B1F), Color(0xFF15224D), Color(0xFF060B1F)),
                 ),
             ),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "ElSeeker",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onPrimary,
+                text = stringResource(R.string.home_universe_verse),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = Color.White,
             )
-            Text(
-                text = stringResource(R.string.home_hero_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DailyVerseCard(verse: DailyVerseDto) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = stringResource(R.string.home_daily_verse_label),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = verse.text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "${verse.bookName} ${verse.chapterNumber}:${verse.verseNumber}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun DailyVersePlaceholder(message: String) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(20.dp),
-        )
-    }
-}
-
-@Composable
-private fun MenuCard(entry: HomeMenuEntry, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1.4f)
-            .clickable(onClick = onClick),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                imageVector = entry.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(entry.labelRes),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Spacer(Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.clickable(onClick = onCta),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.home_universe_cta),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFBFD3FF),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(text = "→", color = Color(0xFFBFD3FF), fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

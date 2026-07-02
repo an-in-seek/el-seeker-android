@@ -1,5 +1,6 @@
 package com.elseeker.android.feature.study.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elseeker.android.core.ui.UiResource
@@ -18,7 +19,11 @@ import javax.inject.Inject
 @HiltViewModel
 class DictionaryListViewModel @Inject constructor(
     private val repository: DictionaryRepository,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    // 홈 인기 검색어 등에서 전달된 초기 검색어(옵션).
+    private val initialKeyword: String? = savedStateHandle.get<String>("keyword")
 
     private val _state = MutableStateFlow<UiResource<List<DictionaryItemDto>>>(UiResource.Loading)
     val state: StateFlow<UiResource<List<DictionaryItemDto>>> = _state.asStateFlow()
@@ -31,6 +36,8 @@ class DictionaryListViewModel @Inject constructor(
     val ranking: StateFlow<List<DictionaryRankingItemDto>> = _ranking.asStateFlow()
 
     init {
+        // 프리필 키워드가 있으면 그 검색어로 시작(웹 /web/study/dictionary?keyword= 과 동일).
+        if (!initialKeyword.isNullOrBlank()) _query.value = initialKeyword
         search()
         loadRanking()
     }
