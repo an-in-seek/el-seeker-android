@@ -68,6 +68,12 @@ class BibleBookOverviewViewModel @Inject constructor(
         get() = sessionManager.hasSession() && !sessionManager.isSignupSession
 
     init {
+        // 프리페치된 인접 책이면 첫 프레임부터 콘텐츠를 노출한다 —
+        // 네비게이션 교체(이전/다음 책)로 새 VM 이 Loading 으로 시작하며 스피너·하단바 라벨이
+        // 번쩍이던 깜빡임을 제거. 캐시에 없으면 refreshOnResume→load() 가 정상 로드한다.
+        repository.peekChapters(translationId, bookOrder)?.let {
+            _state.value = UiResource.Success(it.toBookOverview())
+        }
         loadTranslationCode()
     }
 
@@ -137,6 +143,9 @@ class BibleBookOverviewViewModel @Inject constructor(
             load()
             return
         }
+        // init 의 캐시 즉시 렌더로 여기 진입한 경우에도 이 책의 이웃(±1)을 프리페치해
+        // 다음 이전/다음 이동을 즉시 처리한다(캐시된 이웃은 no-op).
+        prefetchNeighbors()
         viewModelScope.launch {
             _state.value = UiResource.Success(current.data.copy(readChapters = loadReadChapters()))
             _bookMemo.value = loadBookMemo()
