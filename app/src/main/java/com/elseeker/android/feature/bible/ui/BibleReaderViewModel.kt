@@ -100,17 +100,23 @@ class BibleReaderViewModel @Inject constructor(
         pendingDirection = null
         lastBookOrder = bookOrder
         lastChapter = chapterNumber
-        _state.value = UiResource.Loading
-        // 이전 장의 하이라이트/메모/장 메모/읽음 상태가 잔상으로 보이지 않도록 초기화(인플라이트 응답도 무효화).
-        chapterStateGeneration++
-        _highlights.value = emptyMap()
-        _memos.value = emptyMap()
-        _chapterMemo.value = null
-        _isRead.value = false
+        // 캐시된 장이면 Loading 으로 비우지 않고 즉시 렌더(스피너 깜빡임 제거) — 잔상 정리는 onLoaded 가 한다.
+        val cached = repository.peekVerses(translationId, bookOrder, chapterNumber)
+        if (cached != null) {
+            _state.value = UiResource.Success(cached)
+        } else {
+            _state.value = UiResource.Loading
+            // 이전 장의 하이라이트/메모/장 메모/읽음 잔상이 보이지 않도록 초기화(인플라이트 응답도 무효화).
+            chapterStateGeneration++
+            _highlights.value = emptyMap()
+            _memos.value = emptyMap()
+            _chapterMemo.value = null
+            _isRead.value = false
+        }
         viewModelScope.launch {
             repository.verses(translationId, bookOrder, chapterNumber)
                 .onSuccess { onLoaded(it) }
-                .onFailure { _state.value = it.toUiError() }
+                .onFailure { if (_state.value !is UiResource.Success) _state.value = it.toUiError() }
         }
     }
 
@@ -159,6 +165,16 @@ class BibleReaderViewModel @Inject constructor(
         _state.value = UiResource.Success(verses)
         // 읽기 진도는 더 이상 자동 기록하지 않는다(웹과 동일 — '읽음' 버튼을 눌렀을 때만 markRead() 호출).
         loadChapterState(bookOrder, chapterNumber)
+        // 이전/다음 장을 양방향으로 미리 조회해 캐시 → 이동 버튼을 눌러도 네트워크 없이 즉시 교체.
+        prefetchAdjacent(bookOrder, chapterNumber)
+    }
+
+    /** 현재 장 기준 이전/다음 장을 백그라운드로 미리 조회(navigate 캐시에 적재). 실패 무시. */
+    private fun prefetchAdjacent(bookOrder: Int, chapterNumber: Int) {
+        viewModelScope.launch {
+            repository.navigate(translationId, bookOrder, chapterNumber, BibleNav.PREV)
+            repository.navigate(translationId, bookOrder, chapterNumber, BibleNav.NEXT)
+        }
     }
 
     /** 장 상태(하이라이트·절 메모·장 메모·읽음) 로드. 인증 세션이 없으면 호출 자체를 생략(기본값 유지). */

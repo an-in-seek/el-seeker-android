@@ -52,6 +52,8 @@ class BibleRepository @Inject constructor(
     private val bookDetailInFlight = ConcurrentHashMap<String, Deferred<BookDetailDto>>()
     private val versesCache = ConcurrentHashMap<String, VersesDto>()
     private val versesInFlight = ConcurrentHashMap<String, Deferred<VersesDto>>()
+    private val navigateCache = ConcurrentHashMap<String, VersesDto>()
+    private val navigateInFlight = ConcurrentHashMap<String, Deferred<VersesDto>>()
 
     /**
      * 값 캐시 히트면 즉시 반환하고, 아니면 동일 키의 진행 중 요청이 있으면 그 결과를 공유하며,
@@ -129,13 +131,25 @@ class BibleRepository @Inject constructor(
             }
         }
 
+    /** 인메모리 캐시된 절 본문을 동기로 즉시 반환(없으면 null). 로딩 스피너 깜빡임 방지용. */
+    fun peekVerses(translationId: Long, bookOrder: Int, chapterNumber: Int): VersesDto? =
+        versesCache["$translationId:$bookOrder:$chapterNumber"]
+
+    /**
+     * 이전/다음 장 이동. 성경 구조는 불변이라 (from, direction) → 대상 장이 결정적이므로 캐시한다.
+     * 응답으로 확정된 좌표(대상 장)를 [versesCache] 에도 채워, 그 장을 직접 열 때도 즉시 뜨게 한다.
+     */
     suspend fun navigate(
         translationId: Long,
         bookOrder: Int,
         chapterNumber: Int,
         direction: String,
     ): Result<VersesDto> = runCatching {
-        safeApiCall(json) { bibleApi.navigate(translationId, bookOrder, chapterNumber, direction) }
+        val key = "$translationId:$bookOrder:$chapterNumber:$direction"
+        coalesced(navigateCache, navigateInFlight, key) {
+            safeApiCall(json) { bibleApi.navigate(translationId, bookOrder, chapterNumber, direction) }
+                .also { versesCache["$translationId:${it.book.bookOrder}:${it.book.chapter.chapterNumber}"] = it }
+        }
     }
 
     suspend fun bookDetail(translationId: Long, bookOrder: Int): Result<BookDetailDto> =
