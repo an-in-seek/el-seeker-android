@@ -215,10 +215,11 @@ fun BibleReaderScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .nestedScroll(nestedScrollConnection),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 4.dp),
                 ) {
                     // 타이틀은 웹처럼 콘텐츠와 함께 스크롤된다.
-                    item(key = "page-title") { BiblePageTitle(text = title) }
+                    // 첫 절 행의 상단 패딩(14dp)이 아래에 붙으므로 하단 패딩을 줄여 상하 균형을 맞춘다.
+                    item(key = "page-title") { BiblePageTitle(text = title, bottomPadding = 2.dp) }
                     items(data.book.chapter.verses, key = { it.verseId }) { verse ->
                         val highlightColor = highlights[verse.verseNumber]?.let(::highlightColorOf)
                         val hasMemo = memos.containsKey(verse.verseNumber)

@@ -191,7 +191,8 @@ fun BibleBookOverviewScreen(
             ) {
                 // 타이틀·설명·액션바도 웹처럼 콘텐츠와 함께 스크롤된다(full-span 헤더 아이템).
                 item(key = "page-title", span = { GridItemSpan(maxLineSpan) }) {
-                    BiblePageTitle(pageTitle)
+                    // 아이템 간격(8dp)이 아래에 붙으므로 하단 패딩을 줄여 상하 균형(16dp)을 맞춘다.
+                    BiblePageTitle(pageTitle, bottomPadding = 8.dp)
                 }
                 // 요약이 비어 있으면(설명 미등록 책) 빈 보더 행을 그리지 않는다.
                 if (data.descriptionSummary.isNotBlank()) {

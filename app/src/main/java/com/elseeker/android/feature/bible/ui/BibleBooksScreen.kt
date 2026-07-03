@@ -207,9 +207,10 @@ private fun BookSearchField(
     TextField(
         value = query,
         onValueChange = onQueryChange,
+        // 타이틀 자체 하단 여백(16dp)과 균형이 맞도록 top 패딩은 두지 않는다.
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
         shape = RoundedCornerShape(12.dp),
         placeholder = { Text(stringResource(R.string.bible_books_search_placeholder)) },
         singleLine = true,

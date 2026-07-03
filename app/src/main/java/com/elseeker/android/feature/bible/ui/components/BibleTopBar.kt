@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
 
@@ -91,14 +92,23 @@ fun BibleTopBar(
     }
 }
 
-/** 페이지 타이틀 — 상단바 아래 본문 중앙 정렬(스크린샷의 "성경 번역본"/"개역한글" 등). */
+/**
+ * 페이지 타이틀 — 상단바 아래 본문 중앙 정렬(스크린샷의 "성경 번역본"/"개역한글" 등).
+ * 다음 요소가 자체 상단 여백(리스트 간격·행 패딩 등)을 가지면 [bottomPadding] 을 줄여
+ * 타이틀의 체감 상/하 여백이 같아지도록 화면별로 보정한다.
+ */
 @Composable
-fun BiblePageTitle(text: String, modifier: Modifier = Modifier) {
+fun BiblePageTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    topPadding: Dp = 16.dp,
+    bottomPadding: Dp = 16.dp,
+) {
     Text(
         text = text,
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 16.dp),
+            .padding(top = topPadding, bottom = bottomPadding),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,

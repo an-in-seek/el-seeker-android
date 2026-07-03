@@ -63,7 +63,8 @@ fun TranslationListScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                // 타이틀 자체 하단 여백(16dp)이 있으므로 top 패딩은 두지 않는다(상하 균형).
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 items(groups, key = { it.languageLabel }) { group ->
