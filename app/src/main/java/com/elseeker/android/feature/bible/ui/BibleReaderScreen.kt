@@ -8,6 +8,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -309,6 +310,19 @@ fun BibleReaderScreen(
                     }
                 }
 
+                // 웹과 동일: FAB 메뉴가 열리면 본문을 딤(scrim) 처리하고, 스크림 탭 시 닫는다.
+                if (fabExpanded && selectedVerses.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.32f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { fabExpanded = false },
+                    )
+                }
+
                 if (selectedVerses.isNotEmpty()) {
                     VerseSelectionFab(
                         modifier = Modifier
@@ -571,45 +585,37 @@ private fun VerseSelectionFab(
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.End) {
         if (expanded) {
-            FabMenuItem(icon = "📤", label = shareLabel, onClick = onShare)
-            Spacer(Modifier.height(8.dp))
-            FabMenuItem(icon = "📋", label = copyLabel, onClick = onCopy)
-            Spacer(Modifier.height(8.dp))
-            FabMenuItem(icon = "📝", label = memoLabel, onClick = onMemo, enabled = memoEnabled)
+            FabMenuItem(icon = "📕", label = shareLabel, onClick = onShare)
             Spacer(Modifier.height(10.dp))
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 3.dp,
-                modifier = Modifier.padding(bottom = 12.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    HIGHLIGHT_SWATCHES.forEach { swatch ->
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(swatch.color)
-                                .clickable { onHighlight(swatch.wire) },
-                        )
+            FabMenuItem(icon = "📋", label = copyLabel, onClick = onCopy)
+            Spacer(Modifier.height(10.dp))
+            FabMenuItem(icon = "📝", label = memoLabel, onClick = onMemo, enabled = memoEnabled)
+            Spacer(Modifier.height(12.dp))
+            // 형광펜 색상 2×3 그리드 + 지우기 — 웹처럼 스크림 위에 개별 원으로 떠 있다.
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                HIGHLIGHT_SWATCHES.chunked(3).forEach { rowSwatches ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        rowSwatches.forEach { swatch ->
+                            SwatchCircle(color = swatch.color, onClick = { onHighlight(swatch.wire) })
+                        }
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .semantics { contentDescription = highlightClearDesc }
-                            .clickable { onHighlight(null) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("✕", fontSize = 12.sp)
+                }
+                // 지우기(형광펜 해제)
+                Surface(
+                    onClick = { onHighlight(null) },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 2.dp,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .semantics { contentDescription = highlightClearDesc },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("✕", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
+            Spacer(Modifier.height(14.dp))
         }
         FloatingActionButton(onClick = onToggle) {
             Icon(
@@ -618,6 +624,18 @@ private fun VerseSelectionFab(
             )
         }
     }
+}
+
+/** 형광펜 색상 원 하나 — 스크림 위에서 도드라지도록 그림자를 준다. */
+@Composable
+private fun SwatchCircle(color: Color, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = color,
+        shadowElevation = 2.dp,
+        modifier = Modifier.size(40.dp),
+    ) {}
 }
 
 @Composable
