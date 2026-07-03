@@ -2,6 +2,9 @@ package com.elseeker.android.feature.bible.ui
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,46 +20,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -73,18 +74,25 @@ import com.elseeker.android.R
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.feature.bible.data.VersesDto
+import com.elseeker.android.feature.bible.ui.components.BibleBottomBar
+import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
+import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 
 /**
- * 절 본문 뷰어(웹 verse-list 화면과 동일 UX 패턴).
+ * 절 본문 뷰어(웹 verse-list 화면과 동일 UX 패턴, docs/view/verse-list.jpg).
  * - 절 탭 = 다중 선택 토글(Set 기반). 선택된 절이 있으면 우하단 FAB 로 공유/복사/메모/형광펜 실행.
- * - 절 목록 아래 [장 메모] [읽음] 버튼, 하단 고정 내비에 이전/장 선택/다음.
+ * - 타이틀 아래 [장 메모][읽음] 버튼, 하단 고정 내비에 이전/장 선택/다음.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BibleReaderScreen(
     onBack: () -> Unit,
     onOpenChapterList: (translationId: Long, bookOrder: Int) -> Unit,
+    onChangeTranslation: () -> Unit,
+    onSearchClick: () -> Unit,
+    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
     viewModel: BibleReaderViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -92,10 +100,15 @@ fun BibleReaderScreen(
     val memos by viewModel.memos.collectAsStateWithLifecycle()
     val chapterMemo by viewModel.chapterMemo.collectAsStateWithLifecycle()
     val isRead by viewModel.isRead.collectAsStateWithLifecycle()
+    val translationCode by viewModel.translationCode.collectAsStateWithLifecycle()
+    val fontStep by viewModel.fontStep.collectAsStateWithLifecycle()
     val success = state as? UiResource.Success<VersesDto>
-    val title = success?.data?.let {
-        stringResource(R.string.bible_reader_chapter_title, it.book.bookName, it.book.chapter.chapterNumber)
-    } ?: stringResource(R.string.bible_reader_title_fallback)
+    // 이미지 파리티: "창세기 1" — "장" 접미 없이 책이름+장번호만 표기.
+    val title = success?.data?.let { "${it.book.bookName} ${it.book.chapter.chapterNumber}" }
+        ?: stringResource(R.string.bible_reader_title_fallback)
+    val verseFontSizeValue = fontSizeForStep(fontStep)
+    val verseFontSize = verseFontSizeValue.sp
+    val verseLineHeight = (verseFontSizeValue * 1.6f).sp
 
     // LazyColumn items{} 본문에서 stringResource 를 호출하면 빌드 오류가 났던 이력이 있어
     // 필요한 문자열은 모두 컴포저블 상단에서 미리 해석해 둔다.
@@ -104,9 +117,6 @@ fun BibleReaderScreen(
     val loginRequiredMessage = stringResource(R.string.bible_reader_login_required)
     val copyDoneMessage = stringResource(R.string.bible_copy_done)
     val markedReadMessage = stringResource(R.string.bible_marked_read)
-    val prevLabel = stringResource(R.string.bible_prev_chapter)
-    val nextLabel = stringResource(R.string.bible_next_chapter)
-    val chapterSelectDesc = stringResource(R.string.bible_chapter_select_desc)
     val readLabel = stringResource(R.string.bible_mark_read)
     val chapterMemoBtnLabel = stringResource(R.string.bible_chapter_memo_btn)
     val chapterMemoTitle = stringResource(R.string.bible_chapter_memo_title)
@@ -122,9 +132,10 @@ fun BibleReaderScreen(
     val fabMemoLabel = stringResource(R.string.bible_fab_memo)
     val fabOpenDesc = stringResource(R.string.bible_fab_open_desc)
     val highlightClearDesc = stringResource(R.string.bible_highlight_clear_desc)
+    val memoHasDesc = stringResource(R.string.bible_verse_has_memo_desc)
 
-    var showPicker by remember { mutableStateOf(false) }
     var showChapterMemo by remember { mutableStateOf(false) }
+    var showFontSizeDialog by remember { mutableStateOf(false) }
     var memoVerseNumber by remember { mutableStateOf<Int?>(null) }
     var selectedVerses by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var fabExpanded by remember { mutableStateOf(false) }
@@ -140,40 +151,53 @@ fun BibleReaderScreen(
         fabExpanded = false
     }
 
+    // 스크롤 반응형(웹 파리티): 아래로 스크롤 → 상단바 숨김 + 하단 탭 숨김(onChromeVisibleChange),
+    // 위로 스크롤 → 복원. 하단 내비(⬅|📖|➡)는 웹 section-nav 처럼 항상 유지한다.
+    val listState = rememberLazyListState()
+    var chromeVisible by remember { mutableStateOf(true) }
+    val currentOnChromeVisibleChange by rememberUpdatedState(onChromeVisibleChange)
+    LaunchedEffect(chromeVisible) { currentOnChromeVisibleChange(chromeVisible) }
+
+    val nestedScrollConnection = remember(listState) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -SCROLL_HIDE_THRESHOLD_PX && listState.canScrollBackward) {
+                    chromeVisible = false
+                } else if (available.y > SCROLL_HIDE_THRESHOLD_PX) {
+                    chromeVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    // 제목 탭 → 장 선택 시트(임의 장으로 점프). 데이터가 있을 때만 활성화.
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = if (success != null) Modifier.clickable { showPicker = true } else Modifier,
-                    ) {
-                        Text(title, fontWeight = FontWeight.SemiBold)
-                        if (success != null) {
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(R.string.bible_chapter_select_label))
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                },
-            )
+            AnimatedVisibility(
+                visible = chromeVisible,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                BibleTopBar(
+                    onBack = onBack,
+                    translationCode = translationCode,
+                    onChangeTranslation = onChangeTranslation,
+                    onSearchClick = onSearchClick,
+                    onFontSizeClick = { showFontSizeDialog = true },
+                    onProfileClick = onProfileClick,
+                )
+            }
         },
         bottomBar = {
             if (success != null) {
-                ReaderBottomBar(
-                    data = success.data,
-                    prevLabel = prevLabel,
-                    nextLabel = nextLabel,
-                    chapterLabel = title,
-                    chapterSelectDesc = chapterSelectDesc,
+                BibleBottomBar(
+                    centerLabel = title,
                     onPrev = viewModel::goPrev,
+                    onCenter = { onOpenChapterList(viewModel.translationId, success.data.book.bookOrder) },
                     onNext = viewModel::goNext,
-                    onOpenChapterList = { onOpenChapterList(viewModel.translationId, success.data.book.bookOrder) },
+                    prevEnabled = success.data.hasPrev,
+                    nextEnabled = success.data.hasNext,
                 )
             }
         },
@@ -187,97 +211,80 @@ fun BibleReaderScreen(
         ) { data ->
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 ) {
+                    // 타이틀은 웹처럼 콘텐츠와 함께 스크롤된다.
+                    item(key = "page-title") { BiblePageTitle(text = title) }
                     items(data.book.chapter.verses, key = { it.verseId }) { verse ->
                         val highlightColor = highlights[verse.verseNumber]?.let(::highlightColorOf)
                         val hasMemo = memos.containsKey(verse.verseNumber)
                         val isSelected = verse.verseNumber in selectedVerses
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
-                                .then(if (highlightColor != null) Modifier.background(highlightColor) else Modifier)
-                                .then(
-                                    if (isSelected) {
-                                        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .clickable {
-                                    // 절 탭 = 다중 선택 토글(웹 verse-list.js 의 Set 기반 selection 과 동일).
-                                    selectedVerses = if (isSelected) {
-                                        selectedVerses - verse.verseNumber
-                                    } else {
-                                        selectedVerses + verse.verseNumber
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .then(if (highlightColor != null) Modifier.background(highlightColor) else Modifier)
+                                    .then(
+                                        if (isSelected) {
+                                            Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
+                                    .clickable {
+                                        // 절 탭 = 다중 선택 토글(웹 verse-list.js 의 Set 기반 selection 과 동일).
+                                        selectedVerses = if (isSelected) {
+                                            selectedVerses - verse.verseNumber
+                                        } else {
+                                            selectedVerses + verse.verseNumber
+                                        }
                                     }
-                                }
-                                .padding(horizontal = 4.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = "${verse.verseNumber}",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                modifier = Modifier.padding(end = 10.dp, top = 3.dp),
-                            )
-                            Text(
-                                text = verse.text,
-                                style = MaterialTheme.typography.bodyLarge,
-                                lineHeight = 26.sp,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (hasMemo) {
+                                    .padding(horizontal = 4.dp, vertical = 14.dp),
+                            ) {
                                 Text(
-                                    text = "📝",
-                                    fontSize = 13.sp,
-                                    modifier = Modifier.padding(start = 6.dp, top = 2.dp),
+                                    text = "${verse.verseNumber}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    // 웹 파리티: 번호 셀은 고정폭 + 우측 정렬(td:first-child).
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier
+                                        .width(36.dp)
+                                        .padding(end = 8.dp),
+                                )
+                                Text(
+                                    text = if (hasMemo) "${verse.text} 📝" else verse.text,
+                                    fontSize = verseFontSize,
+                                    lineHeight = verseLineHeight,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics {
+                                            if (hasMemo) contentDescription = memoHasDesc
+                                        },
                                 )
                             }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
                     item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            OutlinedButton(
-                                onClick = { requireAuth { showChapterMemo = true } },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text("📝", modifier = Modifier.padding(end = 6.dp))
-                                Text(chapterMemoBtnLabel)
-                            }
-                            if (isRead) {
-                                Button(
-                                    onClick = {},
-                                    enabled = false,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text("✓", modifier = Modifier.padding(end = 6.dp))
-                                    Text(readLabel)
+                        // 웹 verse-list 와 동일: 절 목록 아래 [장 메모][읽음] 반반 폭 버튼 행.
+                        ChapterActionsRow(
+                            isRead = isRead,
+                            chapterMemoLabel = chapterMemoBtnLabel,
+                            readLabel = readLabel,
+                            onChapterMemoClick = { requireAuth { showChapterMemo = true } },
+                            onMarkReadClick = {
+                                requireAuth {
+                                    viewModel.markRead {
+                                        Toast.makeText(context, markedReadMessage, Toast.LENGTH_SHORT).show()
+                                    }
                                 }
-                            } else {
-                                OutlinedButton(
-                                    onClick = {
-                                        requireAuth {
-                                            viewModel.markRead {
-                                                Toast.makeText(context, markedReadMessage, Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text("✓", modifier = Modifier.padding(end = 6.dp))
-                                    Text(readLabel)
-                                }
-                            }
-                        }
+                            },
+                        )
                         // 절이 선택되어 FAB 가 뜨면 목록 마지막 항목을 가리지 않도록 여백 확보.
                         Spacer(Modifier.height(72.dp))
                     }
@@ -336,15 +343,12 @@ fun BibleReaderScreen(
         }
     }
 
-    if (showPicker && success != null) {
-        ChapterPickerSheet(
-            current = success.data.book.chapter.chapterNumber,
-            total = success.data.book.totalChapterCount,
-            onDismiss = { showPicker = false },
-            onSelect = { chapter ->
-                showPicker = false
-                viewModel.loadChapter(success.data.book.bookOrder, chapter)
-            },
+    if (showFontSizeDialog) {
+        FontSizeDialog(
+            currentStep = fontStep,
+            onSelect = viewModel::setFontStep,
+            onReset = { viewModel.setFontStep(3) },
+            onDismiss = { showFontSizeDialog = false },
         )
     }
 
@@ -384,6 +388,98 @@ fun BibleReaderScreen(
             },
         )
     }
+}
+
+/** 스크롤 이벤트 1회당 상단바/하단 탭 표시 전환 임계값(px) — 책/장 목록 화면과 동일 기준. */
+private const val SCROLL_HIDE_THRESHOLD_PX = 3f
+
+/** 글씨 크기 단계(1~5) → 본문 sp 값. */
+private fun fontSizeForStep(step: Int): Float = when (step) {
+    1 -> 14f
+    2 -> 16f
+    4 -> 21f
+    5 -> 24f
+    else -> 18f
+}
+
+/** 절 목록 아래 [장 메모][읽음] 반반 폭 버튼 행(웹 verse-list 의 flex-half 구성과 동일). */
+@Composable
+private fun ChapterActionsRow(
+    isRead: Boolean,
+    chapterMemoLabel: String,
+    readLabel: String,
+    onChapterMemoClick: () -> Unit,
+    onMarkReadClick: () -> Unit,
+) {
+    val readGreen = Color(0xFF16A34A)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(
+            onClick = onChapterMemoClick,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("📝", modifier = Modifier.padding(end = 6.dp))
+            Text(chapterMemoLabel)
+        }
+        OutlinedButton(
+            onClick = onMarkReadClick,
+            enabled = !isRead,
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = readGreen),
+        ) {
+            Text("✓", modifier = Modifier.padding(end = 6.dp))
+            Text(readLabel)
+        }
+    }
+}
+
+/** Aa 글씨 크기 다이얼로그 — 5단계 라디오 선택 + 기본으로 초기화. */
+@Composable
+private fun FontSizeDialog(
+    currentStep: Int,
+    onSelect: (Int) -> Unit,
+    onReset: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val stepLabels = listOf(
+        stringResource(R.string.bible_font_step_1),
+        stringResource(R.string.bible_font_step_2),
+        stringResource(R.string.bible_font_step_3),
+        stringResource(R.string.bible_font_step_4),
+        stringResource(R.string.bible_font_step_5),
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.bible_font_size_title), fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                stepLabels.forEachIndexed { index, label ->
+                    val step = index + 1
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(step) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = step == currentStep, onClick = { onSelect(step) })
+                        Spacer(Modifier.width(8.dp))
+                        Text(label)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onReset) { Text(stringResource(R.string.bible_font_reset)) }
+        },
+    )
 }
 
 /** 선택된 절들을 "{책이름} {장}:{절} 본문" 줄로 합친다(공유/복사 공용). */
@@ -547,90 +643,4 @@ private fun MemoDialog(
             TextButton(onClick = onDismiss) { Text(cancelLabel) }
         },
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ChapterPickerSheet(
-    current: Int,
-    total: Int,
-    onDismiss: () -> Unit,
-    onSelect: (Int) -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Text(
-            text = stringResource(R.string.bible_chapter_select_label),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 12.dp),
-        )
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 56.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-        ) {
-            items((1..total.coerceAtLeast(1)).toList()) { chapter ->
-                val selected = chapter == current
-                Surface(
-                    onClick = { onSelect(chapter) },
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(56.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "$chapter",
-                            textAlign = TextAlign.Center,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** 하단 고정 내비 — 이전 장 / 장 선택(onOpenChapterList) / 다음 장. */
-@Composable
-private fun ReaderBottomBar(
-    data: VersesDto,
-    prevLabel: String,
-    nextLabel: String,
-    chapterLabel: String,
-    chapterSelectDesc: String,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
-    onOpenChapterList: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedButton(onClick = onPrev, enabled = data.hasPrev, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Filled.ChevronLeft, contentDescription = null)
-            Text(prevLabel)
-        }
-        Button(
-            onClick = onOpenChapterList,
-            modifier = Modifier
-                .weight(1.3f)
-                .semantics { contentDescription = chapterSelectDesc },
-        ) {
-            Text("📖", modifier = Modifier.padding(end = 6.dp))
-            Text(chapterLabel, maxLines = 1)
-        }
-        OutlinedButton(onClick = onNext, enabled = data.hasNext, modifier = Modifier.weight(1f)) {
-            Text(nextLabel)
-            Icon(Icons.Filled.ChevronRight, contentDescription = null)
-        }
-    }
 }

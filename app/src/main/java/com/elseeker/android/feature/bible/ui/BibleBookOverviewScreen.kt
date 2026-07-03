@@ -1,6 +1,11 @@
 package com.elseeker.android.feature.bible.ui
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,43 +19,44 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,10 +69,13 @@ import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.core.ui.openExternalUrl
 import com.elseeker.android.feature.bible.data.BookDetailDto
+import com.elseeker.android.feature.bible.ui.components.BibleBottomBar
+import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
+import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 
 /**
  * 책 개요 화면: 책 설명 요약 행(탭 → 전체 개요 다이얼로그) + 액션 버튼 4개(개요/듣기/퀴즈/메모)
- * + 장 번호 그리드 + 하단 책 전환 내비게이션. 웹 chapter-list 페이지와 동일한 구성.
+ * + 장 번호 그리드 + 하단 책 전환 내비게이션. 웹 chapter-list 페이지와 동일한 구성(docs/view/chapter-list.jpg).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,15 +85,21 @@ fun BibleBookOverviewScreen(
     onSelectBook: () -> Unit,
     onSwitchBook: (newBookOrder: Int) -> Unit,
     onOpenContent: (contentKey: String) -> Unit,
+    onChangeTranslation: () -> Unit,
+    onSearchClick: () -> Unit,
+    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
     viewModel: BibleBookOverviewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val bookMemo by viewModel.bookMemo.collectAsStateWithLifecycle()
+    val translationCode by viewModel.translationCode.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // 리더에서 돌아오면 읽음 표시를 최신화한다(최초 진입 로드 포함).
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
+    // 리더에서 돌아오면 읽음 표시만 무음 갱신한다(최초 진입은 내부에서 전체 로드).
+    // 전체 리로드로 스피너가 깜빡이고 스크롤 위치가 초기화되던 버그 수정.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshOnResume() }
 
     var showDescriptionDialog by remember { mutableStateOf(false) }
     var showMemoDialog by remember { mutableStateOf(false) }
@@ -104,25 +119,56 @@ fun BibleBookOverviewScreen(
     }
 
     val overview = (state as? UiResource.Success)?.data
+    val chapterReadDesc = stringResource(R.string.bible_chapter_read_desc)
+    val pageTitle = overview?.detail?.bookName
+        ?: stringResource(R.string.bible_book_overview_title_fallback)
+
+    // 스크롤 반응형(웹 파리티): 아래로 스크롤 → 상단바 숨김 + 하단 탭 숨김(onChromeVisibleChange),
+    // 위로 스크롤 → 복원. 가운데 하단 내비(⬅|📖|➡)는 웹 section-nav 처럼 항상 유지한다.
+    val gridState = rememberLazyGridState()
+    var chromeVisible by remember { mutableStateOf(true) }
+    val currentOnChromeVisibleChange by rememberUpdatedState(onChromeVisibleChange)
+    LaunchedEffect(chromeVisible) { currentOnChromeVisibleChange(chromeVisible) }
+
+    val nestedScrollConnection = remember(gridState) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -SCROLL_HIDE_THRESHOLD_PX && gridState.canScrollBackward) {
+                    chromeVisible = false
+                } else if (available.y > SCROLL_HIDE_THRESHOLD_PX) {
+                    chromeVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.bible_chapter_list_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                    }
-                },
-            )
+            AnimatedVisibility(
+                visible = chromeVisible,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                BibleTopBar(
+                    onBack = onBack,
+                    translationCode = translationCode,
+                    onChangeTranslation = onChangeTranslation,
+                    onSearchClick = onSearchClick,
+                    onProfileClick = onProfileClick,
+                )
+            }
         },
         bottomBar = {
-            BookSwitchNav(
-                bookName = overview?.detail?.bookName,
-                bookOrder = viewModel.bookOrder.takeIf { overview != null },
-                onSelectBook = onSelectBook,
-                onSwitchBook = onSwitchBook,
+            val bookOrder = viewModel.bookOrder.takeIf { overview != null }
+            BibleBottomBar(
+                centerLabel = overview?.detail?.bookName ?: stringResource(R.string.bible_book_overview_title_fallback),
+                onPrev = { bookOrder?.let { onSwitchBook(it - 1) } },
+                onCenter = onSelectBook,
+                onNext = { bookOrder?.let { onSwitchBook(it + 1) } },
+                prevEnabled = bookOrder != null && bookOrder > 1,
+                nextEnabled = bookOrder != null && bookOrder < 66,
             )
         },
     ) { inner ->
@@ -133,64 +179,56 @@ fun BibleBookOverviewScreen(
                 .fillMaxSize()
                 .padding(inner),
         ) { data ->
-            Column(modifier = Modifier.fillMaxSize()) {
-                BookDescriptionRow(
-                    summary = data.descriptionSummary,
-                    onClick = { showDescriptionDialog = true },
-                )
-                BookActionButtons(
-                    hasMemo = bookMemo != null,
-                    onOverviewClick = { onOpenContent("overview-video") },
-                    onListenClick = { onOpenContent("public-reading") },
-                    onQuizClick = {
-                        openExternalUrl(
-                            context,
-                            BuildConfig.BASE_URL.trimEnd('/') + "/web/game/bible-ox-quiz/map",
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                state = gridState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // 타이틀·설명·액션바도 웹처럼 콘텐츠와 함께 스크롤된다(full-span 헤더 아이템).
+                item(key = "page-title", span = { GridItemSpan(maxLineSpan) }) {
+                    BiblePageTitle(pageTitle)
+                }
+                // 요약이 비어 있으면(설명 미등록 책) 빈 보더 행을 그리지 않는다.
+                if (data.descriptionSummary.isNotBlank()) {
+                    item(key = "description", span = { GridItemSpan(maxLineSpan) }) {
+                        BookDescriptionRow(
+                            summary = data.descriptionSummary,
+                            onClick = { showDescriptionDialog = true },
                         )
-                    },
-                    onMemoClick = {
-                        if (viewModel.hasAuthSession) {
-                            showMemoDialog = true
-                        } else {
-                            Toast.makeText(context, loginRequiredMsg, Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                )
-
-                val chapterSelectLabel = stringResource(R.string.bible_chapter_select_label)
-                val chapterReadLegend = stringResource(R.string.bible_chapter_read_legend)
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 56.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Column(modifier = Modifier.padding(bottom = 8.dp)) {
-                            Text(
-                                text = chapterSelectLabel,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    }
+                }
+                item(key = "actions", span = { GridItemSpan(maxLineSpan) }) {
+                    BookActionButtons(
+                        hasMemo = bookMemo != null,
+                        onOverviewClick = { onOpenContent("overview-video") },
+                        onListenClick = { onOpenContent("public-reading") },
+                        onQuizClick = {
+                            openExternalUrl(
+                                context,
+                                BuildConfig.BASE_URL.trimEnd('/') + "/web/game/bible-ox-quiz/map",
                             )
-                            if (data.readChapters.isNotEmpty()) {
-                                Text(
-                                    text = chapterReadLegend,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                        },
+                        onMemoClick = {
+                            if (viewModel.hasAuthSession) {
+                                showMemoDialog = true
+                            } else {
+                                Toast.makeText(context, loginRequiredMsg, Toast.LENGTH_SHORT).show()
                             }
-                        }
-                    }
-                    items(data.chapters, key = { it }) { chapter ->
-                        ChapterCell(
-                            chapter = chapter,
-                            isRead = chapter in data.readChapters,
-                            onClick = { onChapterClick(chapter) },
-                        )
-                    }
+                        },
+                    )
+                }
+                items(data.chapters, key = { it }) { chapter ->
+                    ChapterCell(
+                        chapter = chapter,
+                        isRead = chapter in data.readChapters,
+                        readDesc = chapterReadDesc,
+                        onClick = { onChapterClick(chapter) },
+                    )
                 }
             }
         }
@@ -214,39 +252,43 @@ fun BibleBookOverviewScreen(
     }
 }
 
+/** 스크롤 이벤트 1회당 상단바/하단 탭 표시 전환 임계값(px) — 책 목록 화면과 동일 기준. */
+private const val SCROLL_HIDE_THRESHOLD_PX = 3f
+
 /** 책 개요 요약 행 — 탭하면 전체 개요 다이얼로그를 연다. */
 @Composable
 private fun BookDescriptionRow(summary: String, onClick: () -> Unit) {
     val moreDesc = stringResource(R.string.bible_book_description_more_desc)
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            .clickable(onClickLabel = moreDesc, onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .clickable(onClickLabel = moreDesc, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        Text(text = "📘", modifier = Modifier.padding(end = 8.dp))
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .size(32.dp)
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(text = "📘", modifier = Modifier.padding(end = 8.dp))
-            Text(
-                text = summary,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(text = "➡️")
+            Text(text = "➡")
         }
     }
 }
 
-/** 개요/듣기/퀴즈/메모 액션 버튼 4개(가로 배치). 메모는 저장된 메모가 있으면 강조. */
+/** 개요/듣기/퀴즈/메모 액션 버튼 4개 — 하나의 보더 컨테이너를 세로 구분선으로 4등분. */
 @Composable
 private fun BookActionButtons(
     hasMemo: Boolean,
@@ -258,28 +300,32 @@ private fun BookActionButtons(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        BookActionButton(
+        BookActionCell(
             icon = "▶️",
             label = stringResource(R.string.bible_action_overview),
             modifier = Modifier.weight(1f),
             onClick = onOverviewClick,
         )
-        BookActionButton(
+        VerticalDivider(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        BookActionCell(
             icon = "🎧",
             label = stringResource(R.string.bible_action_listen),
             modifier = Modifier.weight(1f),
             onClick = onListenClick,
         )
-        BookActionButton(
+        VerticalDivider(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        BookActionCell(
             icon = "🎮",
             label = stringResource(R.string.bible_action_quiz),
             modifier = Modifier.weight(1f),
             onClick = onQuizClick,
         )
-        BookActionButton(
+        VerticalDivider(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        BookActionCell(
             icon = "📝",
             label = stringResource(R.string.bible_action_memo),
             modifier = Modifier.weight(1f),
@@ -290,39 +336,27 @@ private fun BookActionButtons(
 }
 
 @Composable
-private fun BookActionButton(
+private fun BookActionCell(
     icon: String,
     label: String,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Card(
-        modifier = modifier.clickable(onClickLabel = label, onClick = onClick),
-        colors = if (highlighted) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-        } else {
-            CardDefaults.cardColors()
-        },
+    Row(
+        modifier = modifier
+            .clickable(onClickLabel = label, onClick = onClick)
+            .padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(text = icon, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = if (highlighted) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-            )
-        }
+        Text(text = icon, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
@@ -366,7 +400,8 @@ private fun BookDescriptionDialog(detail: BookDetailDto, onDismiss: () -> Unit) 
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            // 정보성 다이얼로그라 '취소'가 아닌 '닫기'로 표기한다.
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         },
     )
 }
@@ -417,78 +452,36 @@ private fun BookMemoDialog(
     )
 }
 
-/** 하단 고정 책 전환 내비게이션: 이전 책 / 책 선택(장 목록 재진입 X, 책 목록으로 이동) / 다음 책. */
+/** 장 번호 셀 — 흰 배경 + 보더, 읽은 장은 우상단에 초록 체크 표시(배경은 미읽음과 동일). */
 @Composable
-private fun BookSwitchNav(
-    bookName: String?,
-    bookOrder: Int?,
-    onSelectBook: () -> Unit,
-    onSwitchBook: (Int) -> Unit,
-) {
-    val prevDesc = stringResource(R.string.bible_prev_book_desc)
-    val nextDesc = stringResource(R.string.bible_next_book_desc)
-    val selectDesc = stringResource(R.string.bible_book_select_desc)
-    Surface(tonalElevation = 3.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedIconButton(
-                onClick = { bookOrder?.let { onSwitchBook(it - 1) } },
-                enabled = bookOrder != null && bookOrder > 1,
-                modifier = Modifier.clearAndSetSemantics { contentDescription = prevDesc },
-            ) {
-                Text(text = "⬅")
-            }
-            Button(
-                onClick = onSelectBook,
-                modifier = Modifier
-                    .weight(1f)
-                    .clearAndSetSemantics {
-                        contentDescription = bookName?.let { "$selectDesc $it" } ?: selectDesc
-                    },
-                enabled = bookName != null,
-            ) {
-                Text(text = "📖")
-                Spacer(Modifier.width(8.dp))
-                Text(text = bookName ?: stringResource(R.string.bible_book_overview_title_fallback))
-            }
-            OutlinedIconButton(
-                onClick = { bookOrder?.let { onSwitchBook(it + 1) } },
-                enabled = bookOrder != null && bookOrder < 66,
-                modifier = Modifier.clearAndSetSemantics { contentDescription = nextDesc },
-            ) {
-                Text(text = "➡")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChapterCell(chapter: Int, isRead: Boolean, onClick: () -> Unit) {
-    Card(
+private fun ChapterCell(chapter: Int, isRead: Boolean, readDesc: String, onClick: () -> Unit) {
+    Box(
         modifier = Modifier
-            .aspectRatio(1f)
+            // 이미지 파리티: 정사각형이 아니라 가로로 넓은 셀(≈5:3).
+            .aspectRatio(1.6f)
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
-        colors = if (isRead) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-        } else {
-            CardDefaults.cardColors()
-        },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = chapter.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (isRead) {
             Text(
-                text = chapter.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                color = if (isRead) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                text = "✓",
+                color = READ_CHECK_COLOR,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .semantics { contentDescription = readDesc },
             )
         }
     }
 }
+
+private val READ_CHECK_COLOR = Color(0xFF16A34A)

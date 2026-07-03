@@ -8,6 +8,7 @@ import com.elseeker.android.core.ui.toUiError
 import com.elseeker.android.feature.bible.data.BookDto
 import com.elseeker.android.feature.bible.domain.BibleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +18,8 @@ import javax.inject.Inject
 data class BibleBooksUiState(
     val oldTestament: List<BookDto> = emptyList(),
     val newTestament: List<BookDto> = emptyList(),
+    val translationName: String = "",
+    val translationType: String = "",
 )
 
 /**
@@ -52,12 +55,21 @@ class BibleBooksViewModel @Inject constructor(
         }
         _state.value = UiResource.Loading
         viewModelScope.launch {
-            repository.books(translationId)
+            val booksDeferred = async { repository.books(translationId) }
+            val translationsDeferred = async { repository.translations() }
+            val booksResult = booksDeferred.await()
+            val translationsResult = translationsDeferred.await()
+
+            booksResult
                 .onSuccess { books ->
+                    val translation = translationsResult.getOrNull()
+                        ?.firstOrNull { it.translationId == translationId }
                     _state.value = UiResource.Success(
                         BibleBooksUiState(
                             oldTestament = books.filter { it.testamentType == TESTAMENT_OLD },
                             newTestament = books.filter { it.testamentType == TESTAMENT_NEW },
+                            translationName = translation?.translationName ?: "",
+                            translationType = translation?.translationType ?: "",
                         )
                     )
                 }

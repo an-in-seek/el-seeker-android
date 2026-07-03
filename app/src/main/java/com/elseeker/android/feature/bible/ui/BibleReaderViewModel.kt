@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.elseeker.android.core.auth.SessionManager
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.core.ui.toUiError
+import com.elseeker.android.feature.bible.data.BibleReaderPrefs
 import com.elseeker.android.feature.bible.data.ChapterMemoItemDto
 import com.elseeker.android.feature.bible.data.VersesDto
 import com.elseeker.android.feature.bible.domain.BibleNav
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class BibleReaderViewModel @Inject constructor(
     private val repository: BibleRepository,
     private val sessionManager: SessionManager,
+    private val readerPrefs: BibleReaderPrefs,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -47,6 +49,14 @@ class BibleReaderViewModel @Inject constructor(
     private val _isRead = MutableStateFlow(false)
     val isRead: StateFlow<Boolean> = _isRead.asStateFlow()
 
+    // 상단바 번역본 코드 칩("KRV" 등) — 조회 실패 시 null 로 유지해 칩을 숨긴다.
+    private val _translationCode = MutableStateFlow<String?>(null)
+    val translationCode: StateFlow<String?> = _translationCode.asStateFlow()
+
+    // 절 본문 글씨 크기 단계(1~5). 로컬 저장값으로 초기화한다.
+    private val _fontStep = MutableStateFlow(readerPrefs.loadFontStep())
+    val fontStep: StateFlow<Int> = _fontStep.asStateFlow()
+
     // 오류 상태에서도 재시도할 수 있도록 마지막 시도 좌표를 보관한다.
     private var lastBookOrder: Int = initialBookOrder
     private var lastChapter: Int = initialChapter
@@ -66,7 +76,25 @@ class BibleReaderViewModel @Inject constructor(
     val canAnnotate: Boolean
         get() = hasAuthSession
 
-    init { loadChapter(initialBookOrder, initialChapter) }
+    init {
+        loadChapter(initialBookOrder, initialChapter)
+        loadTranslationCode()
+    }
+
+    private fun loadTranslationCode() {
+        viewModelScope.launch {
+            _translationCode.value = repository.translations().getOrNull()
+                ?.firstOrNull { it.translationId == translationId }
+                ?.translationType
+        }
+    }
+
+    /** 글씨 크기 단계 변경(1~5). 즉시 적용 + 로컬 저장. */
+    fun setFontStep(step: Int) {
+        val clamped = step.coerceIn(1, 5)
+        _fontStep.value = clamped
+        readerPrefs.saveFontStep(clamped)
+    }
 
     fun loadChapter(bookOrder: Int, chapterNumber: Int) {
         pendingDirection = null

@@ -54,12 +54,28 @@ class BibleBookOverviewViewModel @Inject constructor(
     private val _bookMemo = MutableStateFlow<BookMemoItemDto?>(null)
     val bookMemo: StateFlow<BookMemoItemDto?> = _bookMemo.asStateFlow()
 
+    // 상단바 번역본 코드 칩("KRV" 등) — 조회 실패 시 null 로 유지해 칩을 숨긴다.
+    private val _translationCode = MutableStateFlow<String?>(null)
+    val translationCode: StateFlow<String?> = _translationCode.asStateFlow()
+
     private val _memoEvents = Channel<BookMemoEvent>(Channel.BUFFERED)
     val memoEvents: Flow<BookMemoEvent> = _memoEvents.receiveAsFlow()
 
     /** 인증 세션(정식 토큰) 없이 인증 필요 API 를 호출하지 않는다 — 불필요한 401/재발급 시도 방지. */
     val hasAuthSession: Boolean
         get() = sessionManager.hasSession() && !sessionManager.isSignupSession
+
+    init {
+        loadTranslationCode()
+    }
+
+    private fun loadTranslationCode() {
+        viewModelScope.launch {
+            _translationCode.value = repository.translations().getOrNull()
+                ?.firstOrNull { it.translationId == translationId }
+                ?.translationType
+        }
+    }
 
     fun load() {
         _state.value = UiResource.Loading
@@ -76,19 +92,39 @@ class BibleBookOverviewViewModel @Inject constructor(
             val chaptersDto = repository.chapters(translationId, bookOrder).getOrNull()
             val chapters = chaptersDto?.chapterNumbers().orEmpty()
             val descriptionSummary = chaptersDto?.book?.descriptionSummary.orEmpty()
-            // 읽기 진도(인증 필요)는 실패해도 화면을 막지 않는다 — 표시만 생략.
-            val read = repository.readChapters(translationId, bookOrder)
-                .getOrDefault(emptyList())
-                .toSet()
-            _state.value = UiResource.Success(BookOverview(detail, descriptionSummary, chapters, read))
-
-            _bookMemo.value = if (hasAuthSession) {
-                repository.bookMemo(translationId, bookOrder).getOrNull()
-            } else {
-                null
-            }
+            _state.value = UiResource.Success(
+                BookOverview(detail, descriptionSummary, chapters, loadReadChapters())
+            )
+            _bookMemo.value = loadBookMemo()
         }
     }
+
+    /**
+     * 리더에서 돌아왔을 때(ON_RESUME)의 무음 갱신 — 읽음 표시/책 메모만 다시 조회한다.
+     * 이미 로드된 화면을 Loading 으로 되돌리지 않아 스피너 깜빡임·스크롤 위치 초기화가 없다.
+     */
+    fun refreshOnResume() {
+        val current = _state.value
+        if (current !is UiResource.Success) {
+            load()
+            return
+        }
+        viewModelScope.launch {
+            _state.value = UiResource.Success(current.data.copy(readChapters = loadReadChapters()))
+            _bookMemo.value = loadBookMemo()
+        }
+    }
+
+    /** 읽기 진도(인증 필요) — 게스트는 호출 자체를 생략하고, 실패해도 화면을 막지 않는다. */
+    private suspend fun loadReadChapters(): Set<Int> =
+        if (hasAuthSession) {
+            repository.readChapters(translationId, bookOrder).getOrDefault(emptyList()).toSet()
+        } else {
+            emptySet()
+        }
+
+    private suspend fun loadBookMemo(): BookMemoItemDto? =
+        if (hasAuthSession) repository.bookMemo(translationId, bookOrder).getOrNull() else null
 
     /** 책 메모 저장(신규/수정 공통 — PUT upsert). */
     fun saveBookMemo(content: String) {

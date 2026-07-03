@@ -9,6 +9,7 @@
     <!-- Common -->
     <string name="common_back">뒤로</string>
     <string name="common_cancel">취소</string>
+    <string name="common_close">닫기</string>
     <string name="common_search">검색</string>
 
     <!-- Bottom nav tabs -->
@@ -52,15 +53,35 @@
 
     <!-- Bible: reader -->
     <string name="bible_reader_title_fallback">성경</string>
-    <string name="bible_reader_chapter_title">%1$s %2$d장</string>
-    <string name="bible_chapter_select_label">장 선택</string>
     <!-- 웹 성경 4단계 화면(translation/book/chapter/verse-list)과 동일 패턴 -->
     <string name="bible_translation_title">성경 번역본</string>
+    <string name="bible_translation_count">%1$d개</string>
+    <string name="bible_lang_ko">한국어</string>
+    <string name="bible_lang_en">영어</string>
+    <string name="bible_lang_zh">중국어</string>
+    <string name="bible_lang_ja">일본어</string>
+    <string name="bible_lang_es">스페인어</string>
+    <string name="bible_lang_de">독일어</string>
+    <string name="bible_lang_la">라틴어</string>
+    <string name="bible_topbar_search">성경 검색</string>
+    <string name="bible_topbar_profile">프로필</string>
+    <string name="bible_topbar_change_translation">번역본 변경</string>
+    <string name="bible_topbar_font_size_label" translatable="false">Aa</string>
+    <string name="bible_nav_prev">이전</string>
+    <string name="bible_nav_next">다음</string>
+    <string name="bible_font_size_title">글씨 크기</string>
+    <string name="bible_font_step_1">가장 작게</string>
+    <string name="bible_font_step_2">작게</string>
+    <string name="bible_font_step_3">기본</string>
+    <string name="bible_font_step_4">크게</string>
+    <string name="bible_font_step_5">가장 크게</string>
+    <string name="bible_font_reset">기본으로</string>
+    <string name="bible_verse_has_memo_desc">메모 있음</string>
+    <string name="bible_chapter_read_desc">읽은 장</string>
     <string name="bible_books_title">성경책 목록</string>
     <string name="bible_books_search_placeholder">책 이름 검색 (예: 창세기, 마태)</string>
     <string name="bible_books_search_empty">검색 결과가 없습니다.</string>
     <string name="bible_books_count">%1$d권</string>
-    <string name="bible_chapter_list_title">성경 장 목록</string>
     <string name="bible_book_description_more_desc">책 상세 보기</string>
     <string name="bible_action_overview">개요</string>
     <string name="bible_action_listen">듣기</string>
@@ -74,12 +95,6 @@
     <string name="bible_memo_delete">삭제</string>
     <string name="bible_memo_saved">메모를 저장했습니다.</string>
     <string name="bible_memo_deleted">메모를 삭제했습니다.</string>
-    <string name="bible_prev_book_desc">이전 책으로 이동</string>
-    <string name="bible_next_book_desc">다음 책으로 이동</string>
-    <string name="bible_book_select_desc">책 선택</string>
-    <string name="bible_prev_chapter">이전</string>
-    <string name="bible_next_chapter">다음</string>
-    <string name="bible_chapter_select_desc">장 선택</string>
     <string name="bible_mark_read">읽음</string>
     <string name="bible_chapter_memo_btn">장 메모</string>
     <string name="bible_fab_share">공유</string>
@@ -90,7 +105,6 @@
     <string name="bible_copy_done">복사되었습니다.</string>
     <string name="bible_marked_read">읽음으로 기록했습니다.</string>
     <string name="static_content_links_title_fallback">바로가기</string>
-    <string name="bible_chapter_read_legend">읽은 장은 색으로 표시됩니다</string>
     <string name="bible_reader_verse_number">%1$d절</string>
     <string name="bible_reader_highlight_label">하이라이트</string>
     <string name="bible_reader_highlight_clear">하이라이트 지우기</string>
@@ -167,6 +181,17 @@
     <string name="home_popular_dictionary_title">성경 사전 인기 검색어</string>
     <string name="home_universe_verse">태초에 하나님이\n천지를 창조하시니라</string>
     <string name="home_universe_cta">7일 창조 이야기 체험하기</string>
+    <string name="home_title" translatable="false">ElSeeker</string>
+    <string name="home_popular_more">더보기</string>
+    <string name="home_footer_about">소개</string>
+    <string name="home_footer_contact">문의하기</string>
+    <string name="home_footer_terms">서비스 이용약관</string>
+    <string name="home_footer_privacy">개인정보처리방침</string>
+    <string name="home_footer_company">상호명: ElSeeker | 대표명: 안인식</string>
+    <string name="home_footer_support">고객센터: hello@elseeker.com</string>
+    <string name="home_footer_copyright">© 2026 ElSeeker. All rights reserved.</string>
+    <string name="home_footer_email_desc">이메일 문의</string>
+    <string name="home_footer_youtube_desc">유튜브 채널</string>
 
     <!-- My -->
     <string name="my_nav_profile_edit">프로필 수정</string>

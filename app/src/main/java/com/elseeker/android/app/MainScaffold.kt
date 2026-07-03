@@ -3,7 +3,15 @@ package com.elseeker.android.app
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -11,6 +19,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,10 +82,17 @@ fun MainScaffold(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val showBottomBar = TopLevelDestination.entries.any { it.route == currentRoute }
+    val isTopLevelRoute = TopLevelDestination.entries.any { it.route == currentRoute }
+
+    // 성경 책/장 목록 화면은 하단 탭을 기본 노출하되 스크롤 방향에 따라 숨김/표시한다(웹 bottom-tab-hidden 파리티).
+    var bibleChromeVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(currentRoute) { bibleChromeVisible = true }
+    val bibleChromeRoutes = setOf(Routes.BIBLE_BOOKS, Routes.BIBLE_BOOK_OVERVIEW, Routes.BIBLE_READER)
+    val showBottomBar = isTopLevelRoute ||
+        (currentRoute in bibleChromeRoutes && bibleChromeVisible)
 
     // App Links 로 보류된 라우트를 인증 완료(이 화면 진입) 후 1회 네비게이션한다.
-    androidx.compose.runtime.LaunchedEffect(pendingDeepLink) {
+    LaunchedEffect(pendingDeepLink) {
         val route = pendingDeepLink ?: return@LaunchedEffect
         navController.navigate(route)
         onDeepLinkConsumed()
@@ -86,7 +102,7 @@ fun MainScaffold(
     val context = LocalContext.current
     var backPressedOnce by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    BackHandler(enabled = showBottomBar) {
+    BackHandler(enabled = isTopLevelRoute) {
         if (currentRoute != Routes.HOME) {
             navController.navigate(Routes.HOME) {
                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -108,26 +124,37 @@ fun MainScaffold(
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    TopLevelDestination.entries.forEach { dest ->
-                        val selected = backStackEntry?.destination?.hierarchy
-                            ?.any { it.route == dest.route } == true
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(dest.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+            Column {
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = expandVertically(),
+                    exit = shrinkVertically(),
+                ) {
+                    NavigationBar {
+                        TopLevelDestination.entries.forEach { dest ->
+                            val selected = backStackEntry?.destination?.hierarchy
+                                ?.any { it.route == dest.route } == true
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(dest.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(dest.icon, contentDescription = stringResource(dest.labelRes)) },
-                            label = { Text(stringResource(dest.labelRes)) },
-                        )
+                                },
+                                icon = { Icon(dest.icon, contentDescription = stringResource(dest.labelRes)) },
+                                label = { Text(stringResource(dest.labelRes)) },
+                            )
+                        }
                     }
+                }
+                // 탭이 숨겨져도(0 높이 placeable) 제스처 내비 인셋만큼은 확보한다 —
+                // Scaffold 는 bottomBar 슬롯이 비어있지 않으면 인셋 폴백을 적용하지 않기 때문.
+                if (!showBottomBar) {
+                    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                 }
             }
         },
@@ -144,6 +171,14 @@ fun MainScaffold(
             }
         }
 
+        // 성경 4단계 화면 공용 상단바 콜백(스크린샷 파리티 — docs/view/*.jpg).
+        val openBibleSearch: () -> Unit = { navController.navigate(Routes.bibleSearch()) }
+        val openMyTab: () -> Unit = { navigateRoute(Routes.MY) }
+        // KRV ▼ 칩: 번역본 목록(성경 탭 루트)으로 복귀. 백스택에 없으면 탭 전환으로 폴백.
+        val openTranslationList: () -> Unit = {
+            if (!navController.popBackStack(Routes.BIBLE, false)) navigateRoute(Routes.BIBLE)
+        }
+
         NavHost(
             navController = navController,
             startDestination = Routes.HOME,
@@ -151,13 +186,16 @@ fun MainScaffold(
                 .fillMaxSize()
                 .padding(inner),
         ) {
-            composable(Routes.HOME) { HomeScreen(onNavigate = navigateRoute) }
+            composable(Routes.HOME) {
+                HomeScreen(onNavigate = navigateRoute, onProfileClick = openMyTab)
+            }
             // 성경 탭 루트 = 번역본 목록(웹 /web/bible/translation 과 동일).
             composable(Routes.BIBLE) {
                 TranslationListScreen(
                     onTranslationClick = { translationId ->
                         navController.navigate(Routes.bibleBooks(translationId))
                     },
+                    onProfileClick = openMyTab,
                 )
             }
             composable(
@@ -165,10 +203,14 @@ fun MainScaffold(
                 arguments = listOf(navArgument("translationId") { type = NavType.StringType }),
             ) {
                 BibleBooksScreen(
-                    onBack = { navController.popBackStack() },
                     onBookClick = { translationId, bookOrder ->
                         navController.navigate(Routes.bibleBookOverview(translationId, bookOrder))
                     },
+                    onChangeTranslation = openTranslationList,
+                    onSearchClick = openBibleSearch,
+                    onProfileClick = openMyTab,
+                    // 화면 내 스크롤 방향 → 하단 탭 숨김/표시 연동.
+                    onChromeVisibleChange = { bibleChromeVisible = it },
                 )
             }
             composable(Routes.STUDY) {
@@ -298,6 +340,11 @@ fun MainScaffold(
                         }
                     },
                     onOpenContent = { key -> navController.navigate(Routes.studyContent(key)) },
+                    onChangeTranslation = openTranslationList,
+                    onSearchClick = openBibleSearch,
+                    onProfileClick = openMyTab,
+                    // 화면 내 스크롤 방향 → 하단 탭 숨김/표시 연동.
+                    onChromeVisibleChange = { bibleChromeVisible = it },
                 )
             }
             composable(
@@ -332,6 +379,11 @@ fun MainScaffold(
                     onOpenChapterList = { tid, book ->
                         navController.navigate(Routes.bibleBookOverview(tid, book))
                     },
+                    onChangeTranslation = openTranslationList,
+                    onSearchClick = openBibleSearch,
+                    onProfileClick = openMyTab,
+                    // 화면 내 스크롤 방향 → 하단 탭 숨김/표시 연동.
+                    onChromeVisibleChange = { bibleChromeVisible = it },
                 )
             }
         }
