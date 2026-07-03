@@ -99,11 +99,14 @@ fun HomeScreen(
             contentPadding = PaddingValues(bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // 0) 페이지 타이틀 — 웹처럼 콘텐츠와 함께 스크롤.
-            item { BiblePageTitle(stringResource(R.string.home_title)) }
-
-            // 1) 히어로 캐러셀 (home-hero) — 웹처럼 좌우 여백 없는 풀블리드.
-            item { HeroCarousel(baseUrl = baseUrl, onCta = { onNavigate(Routes.BIBLE) }) }
+            // 0) 페이지 타이틀 + 1) 히어로 캐러셀(풀블리드) — 한 아이템으로 묶어
+            // 아이템 간격(16dp)이 타이틀 아래에만 추가로 붙는 상하 여백 불균형을 없앤다.
+            item {
+                Column {
+                    BiblePageTitle(stringResource(R.string.home_title))
+                    HeroCarousel(baseUrl = baseUrl, onCta = { onNavigate(Routes.BIBLE) })
+                }
+            }
 
             // 2) 통합 검색바 (home-unified-search) — v1 은 성경 절 검색으로 위임.
             item {
