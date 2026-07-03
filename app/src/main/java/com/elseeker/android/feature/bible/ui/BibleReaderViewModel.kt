@@ -133,7 +133,10 @@ class BibleReaderViewModel @Inject constructor(
         pendingDirection = direction
         lastBookOrder = fromBookOrder
         lastChapter = fromChapter
-        _state.value = UiResource.Loading
+        // 이미 본문이 있으면 Loading 으로 비우지 않고 유지한다 — 이전/다음 이동 시 본문 영역과
+        // 하단 내비(BibleBottomBar, success!=null 조건)가 통째로 사라졌다 나타나는 깜빡임을 없앤다.
+        // 잔상(이전 장 하이라이트/메모)은 새 장이 도착하는 onLoaded 에서 정리한다.
+        if (_state.value !is UiResource.Success) _state.value = UiResource.Loading
         viewModelScope.launch {
             repository.navigate(translationId, fromBookOrder, fromChapter, direction)
                 .onSuccess { onLoaded(it) }
@@ -147,6 +150,12 @@ class BibleReaderViewModel @Inject constructor(
         pendingDirection = null
         lastBookOrder = bookOrder
         lastChapter = chapterNumber
+        // 새 장으로 교체하는 순간 이전 장의 하이라이트/메모 잔상을 비운다(loadChapterState 가 다시 채움).
+        // 본문 유지 방식(move)에서 새 절에 옛 하이라이트가 잠깐 얹히는 것을 방지.
+        _highlights.value = emptyMap()
+        _memos.value = emptyMap()
+        _chapterMemo.value = null
+        _isRead.value = false
         _state.value = UiResource.Success(verses)
         // 읽기 진도는 더 이상 자동 기록하지 않는다(웹과 동일 — '읽음' 버튼을 눌렀을 때만 markRead() 호출).
         loadChapterState(bookOrder, chapterNumber)
