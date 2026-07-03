@@ -47,6 +47,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elseeker.android.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -102,6 +104,10 @@ fun MainScaffold(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val isTopLevelRoute = TopLevelDestination.entries.any { it.route == currentRoute }
+
+    // 프로필 아이콘 → 계정 메뉴 바텀시트(웹 account-menu 파리티).
+    var showAccountSheet by remember { mutableStateOf(false) }
+    val themeViewModel: ThemeViewModel = hiltViewModel()
 
     // 성경 책/장 목록 화면은 하단 탭을 기본 노출하되 스크롤 방향에 따라 숨김/표시한다(웹 bottom-tab-hidden 파리티).
     var bibleChromeVisible by remember { mutableStateOf(true) }
@@ -191,7 +197,8 @@ fun MainScaffold(
 
         // 성경 4단계 화면 공용 상단바 콜백(스크린샷 파리티 — docs/view/*.jpg).
         val openBibleSearch: () -> Unit = { navController.navigate(Routes.bibleSearch()) }
-        val openMyTab: () -> Unit = { navigateRoute(Routes.MY) }
+        // 프로필 아이콘 → 계정 메뉴 바텀시트(웹 account-menu 파리티).
+        val openAccountSheet: () -> Unit = { showAccountSheet = true }
         // KRV ▼ 칩: 번역본 목록(성경 탭 루트)으로 복귀. 백스택에 없으면 탭 전환으로 폴백.
         val openTranslationList: () -> Unit = {
             if (!navController.popBackStack(Routes.BIBLE, false)) navigateRoute(Routes.BIBLE)
@@ -205,7 +212,7 @@ fun MainScaffold(
                 .padding(inner),
         ) {
             composable(Routes.HOME) {
-                HomeScreen(onNavigate = navigateRoute, onProfileClick = openMyTab)
+                HomeScreen(onNavigate = navigateRoute, onProfileClick = openAccountSheet)
             }
             // 성경 탭 루트 = 번역본 목록(웹 /web/bible/translation 과 동일).
             composable(Routes.BIBLE) {
@@ -213,7 +220,7 @@ fun MainScaffold(
                     onTranslationClick = { translationId ->
                         navController.navigate(Routes.bibleBooks(translationId))
                     },
-                    onProfileClick = openMyTab,
+                    onProfileClick = openAccountSheet,
                 )
             }
             composable(
@@ -226,7 +233,7 @@ fun MainScaffold(
                     },
                     onChangeTranslation = openTranslationList,
                     onSearchClick = openBibleSearch,
-                    onProfileClick = openMyTab,
+                    onProfileClick = openAccountSheet,
                     // 화면 내 스크롤 방향 → 하단 탭 숨김/표시 연동.
                     onChromeVisibleChange = { bibleChromeVisible = it },
                 )
@@ -362,7 +369,7 @@ fun MainScaffold(
                     onOpenDescription = { navController.navigate(Routes.bibleBookDescription(tid, book)) },
                     onChangeTranslation = openTranslationList,
                     onSearchClick = openBibleSearch,
-                    onProfileClick = openMyTab,
+                    onProfileClick = openAccountSheet,
                     // 화면 내 스크롤 방향 → 하단 탭 숨김/표시 연동.
                     onChromeVisibleChange = { bibleChromeVisible = it },
                 )
@@ -389,7 +396,7 @@ fun MainScaffold(
                     },
                     onChangeTranslation = openTranslationList,
                     onSearchClick = openBibleSearch,
-                    onProfileClick = openMyTab,
+                    onProfileClick = openAccountSheet,
                     onChromeVisibleChange = { bibleChromeVisible = it },
                 )
             }
@@ -427,11 +434,26 @@ fun MainScaffold(
                     },
                     onChangeTranslation = openTranslationList,
                     onSearchClick = openBibleSearch,
-                    onProfileClick = openMyTab,
+                    onProfileClick = openAccountSheet,
                     // 화면 내 스크롤 방향 → 하단 탭 숨김/표시 연동.
                     onChromeVisibleChange = { bibleChromeVisible = it },
                 )
             }
+        }
+
+        if (showAccountSheet) {
+            val themeMode by themeViewModel.mode.collectAsStateWithLifecycle()
+            AccountMenuSheet(
+                loggedIn = authState == AuthState.Authenticated,
+                themeMode = themeMode,
+                onSelectTheme = themeViewModel::setMode,
+                onLogin = { showAccountSheet = false; navigateRoute(Routes.MY) },
+                onMyPage = { showAccountSheet = false; navigateRoute(Routes.MY) },
+                onMyMemos = { showAccountSheet = false; navController.navigate(Routes.MY_MEMOS) },
+                onInquiries = { showAccountSheet = false; navController.navigate(Routes.SUPPORT_INQUIRIES) },
+                onLogout = { showAccountSheet = false; onLoggedOut() },
+                onDismiss = { showAccountSheet = false },
+            )
         }
     }
 }

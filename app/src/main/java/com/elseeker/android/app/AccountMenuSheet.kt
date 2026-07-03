@@ -1,0 +1,180 @@
+package com.elseeker.android.app
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.elseeker.android.R
+import com.elseeker.android.ui.theme.ThemeMode
+
+/**
+ * 계정 메뉴 바텀시트(웹 account-menu 파리티) — 상단바 프로필 아이콘으로 연다.
+ * 로그인 상태에 따라 항목이 갈리고, 하단에 라이트/다크/시스템 테마 전환을 제공한다.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AccountMenuSheet(
+    loggedIn: Boolean,
+    themeMode: ThemeMode,
+    onSelectTheme: (ThemeMode) -> Unit,
+    onLogin: () -> Unit,
+    onMyPage: () -> Unit,
+    onMyMemos: () -> Unit,
+    onInquiries: () -> Unit,
+    onLogout: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)) {
+            // 닫기(×)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
+                }
+            }
+
+            if (loggedIn) {
+                AccountRow(stringResource(R.string.account_mypage), onMyPage)
+                AccountRow(stringResource(R.string.account_my_memos), onMyMemos)
+                AccountRow(stringResource(R.string.account_inquiries), onInquiries)
+            } else {
+                AccountRow(stringResource(R.string.account_login), onLogin)
+            }
+
+            ThemeSection(themeMode = themeMode, onSelectTheme = onSelectTheme)
+
+            if (loggedIn) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                AccountRow(stringResource(R.string.account_logout), onLogout)
+            }
+        }
+    }
+}
+
+/** 일반 메뉴 행 — 좌측 정렬 라벨, 전체 폭 클릭. */
+@Composable
+private fun AccountRow(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    )
+}
+
+/** 테마 섹션 — "테마" 헤더(현재 모드 이모지+접기 화살표) + 라이트/다크/시스템 옵션. */
+@Composable
+private fun ThemeSection(themeMode: ThemeMode, onSelectTheme: (ThemeMode) -> Unit) {
+    var expanded by remember { mutableStateOf(true) }
+    val chevron by animateFloatAsState(if (expanded) 0f else 180f, label = "themeChevron")
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.account_theme),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text(text = themeMode.emoji(), fontSize = 18.sp)
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowUp,
+            contentDescription = stringResource(R.string.account_theme_expand),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.graphicsLayer { rotationZ = chevron },
+        )
+    }
+    AnimatedVisibility(visible = expanded) {
+        Column {
+            ThemeOption(ThemeMode.LIGHT, "🌞", stringResource(R.string.account_theme_light), themeMode, onSelectTheme)
+            ThemeOption(ThemeMode.DARK, "🌙", stringResource(R.string.account_theme_dark), themeMode, onSelectTheme)
+            ThemeOption(ThemeMode.SYSTEM, "🖥️", stringResource(R.string.account_theme_system), themeMode, onSelectTheme)
+        }
+    }
+}
+
+@Composable
+private fun ThemeOption(
+    mode: ThemeMode,
+    emoji: String,
+    label: String,
+    current: ThemeMode,
+    onSelect: (ThemeMode) -> Unit,
+) {
+    val selected = mode == current
+    val selectedDesc = stringResource(R.string.account_theme_selected)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect(mode) }
+            .padding(start = 32.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = emoji, fontSize = 18.sp)
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = selectedDesc,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+private fun ThemeMode.emoji(): String = when (this) {
+    ThemeMode.LIGHT -> "🌞"
+    ThemeMode.DARK -> "🌙"
+    ThemeMode.SYSTEM -> "🖥️"
+}

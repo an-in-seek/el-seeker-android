@@ -29,6 +29,11 @@ import com.elseeker.android.feature.auth.data.SocialProvider
 import com.elseeker.android.feature.auth.ui.AuthUiEvent
 import com.elseeker.android.feature.auth.ui.AuthViewModel
 import com.elseeker.android.ui.theme.ElSeekerTheme
+import com.elseeker.android.ui.theme.ThemeManager
+import com.elseeker.android.ui.theme.ThemeMode
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -54,6 +59,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var deepLinkManager: DeepLinkManager
+    @Inject lateinit var themeManager: ThemeManager
 
     private val appViewModel: AppViewModel by viewModels()
     private val authViewModel: AuthViewModel by viewModels()
@@ -82,7 +88,13 @@ class MainActivity : ComponentActivity() {
         observeAuthEvents()
 
         setContent {
-            ElSeekerTheme {
+            val themeMode by themeManager.mode.collectAsStateWithLifecycle()
+            val darkTheme = when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            ElSeekerTheme(darkTheme = darkTheme) {
                 ElSeekerApp(
                     appViewModel = appViewModel,
                     authViewModel = authViewModel,

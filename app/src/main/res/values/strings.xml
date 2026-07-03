@@ -10,6 +10,18 @@
     <string name="common_back">뒤로</string>
     <string name="common_cancel">취소</string>
     <string name="common_close">닫기</string>
+    <!-- 계정 메뉴(프로필 아이콘 → 바텀시트) -->
+    <string name="account_login">로그인</string>
+    <string name="account_mypage">마이페이지</string>
+    <string name="account_my_memos">나의 성경 메모</string>
+    <string name="account_inquiries">내 문의</string>
+    <string name="account_logout">로그아웃</string>
+    <string name="account_theme">테마</string>
+    <string name="account_theme_light">라이트</string>
+    <string name="account_theme_dark">다크</string>
+    <string name="account_theme_system">시스템</string>
+    <string name="account_theme_expand">테마 옵션 펼치기/접기</string>
+    <string name="account_theme_selected">선택됨</string>
     <string name="common_search">검색</string>
 
     <!-- Bottom nav tabs -->
