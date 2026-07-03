@@ -145,7 +145,25 @@ fun BibleBookOverviewScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = {
+        bottomBar = {
+            val bookOrder = viewModel.bookOrder.takeIf { overview != null }
+            BibleBottomBar(
+                centerLabel = overview?.detail?.bookName ?: stringResource(R.string.bible_book_overview_title_fallback),
+                onPrev = { bookOrder?.let { onSwitchBook(it - 1) } },
+                onCenter = onSelectBook,
+                onNext = { bookOrder?.let { onSwitchBook(it + 1) } },
+                prevEnabled = bookOrder != null && bookOrder > 1,
+                nextEnabled = bookOrder != null && bookOrder < 66,
+            )
+        },
+    ) { inner ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(inner),
+        ) {
+            // 상단바를 topBar 슬롯(콘텐츠 위 오버레이) 대신 콘텐츠와 같은 Column 에 두어
+            // 타이틀이 바 아래로 밀려 가려지는 일이 구조적으로 불가능하게 한다(책 목록과 동일 구조).
             AnimatedVisibility(
                 visible = chromeVisible,
                 enter = expandVertically(),
@@ -159,27 +177,12 @@ fun BibleBookOverviewScreen(
                     onProfileClick = onProfileClick,
                 )
             }
-        },
-        bottomBar = {
-            val bookOrder = viewModel.bookOrder.takeIf { overview != null }
-            BibleBottomBar(
-                centerLabel = overview?.detail?.bookName ?: stringResource(R.string.bible_book_overview_title_fallback),
-                onPrev = { bookOrder?.let { onSwitchBook(it - 1) } },
-                onCenter = onSelectBook,
-                onNext = { bookOrder?.let { onSwitchBook(it + 1) } },
-                prevEnabled = bookOrder != null && bookOrder > 1,
-                nextEnabled = bookOrder != null && bookOrder < 66,
-            )
-        },
-    ) { inner ->
-        ResourceContent(
-            resource = state,
-            onRetry = viewModel::load,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner),
-        ) { data ->
-            LazyVerticalGrid(
+            ResourceContent(
+                resource = state,
+                onRetry = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) { data ->
+                LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 state = gridState,
                 modifier = Modifier
@@ -230,6 +233,7 @@ fun BibleBookOverviewScreen(
                         readDesc = chapterReadDesc,
                         onClick = { onChapterClick(chapter) },
                     )
+                }
                 }
             }
         }

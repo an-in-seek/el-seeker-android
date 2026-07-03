@@ -4,21 +4,32 @@ import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,9 +38,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
 import kotlinx.coroutines.delay
@@ -133,29 +149,21 @@ fun MainScaffold(
                     enter = expandVertically(),
                     exit = shrinkVertically(),
                 ) {
-                    // M3 기본 80dp 는 과해서 웹 하단 탭(56px)과 동일한 56dp 로 줄인다.
-                    // NavigationBar 내부가 제스처 인셋 패딩을 먹으므로 인셋만큼 높이에 더해준다.
-                    val navBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                    NavigationBar(modifier = Modifier.height(56.dp + navBarInset)) {
-                        TopLevelDestination.entries.forEach { dest ->
-                            val selected = backStackEntry?.destination?.hierarchy
+                    AppBottomTabBar(
+                        isSelected = { dest ->
+                            backStackEntry?.destination?.hierarchy
                                 ?.any { it.route == dest.route } == true
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = {
-                                    navController.navigate(dest.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                icon = { Icon(dest.icon, contentDescription = stringResource(dest.labelRes)) },
-                                label = { Text(stringResource(dest.labelRes)) },
-                            )
-                        }
-                    }
+                        },
+                        onTabClick = { dest ->
+                            navController.navigate(dest.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                    )
                 }
                 // 탭이 숨겨져도(0 높이 placeable) 제스처 내비 인셋만큼은 확보한다 —
                 // Scaffold 는 bottomBar 슬롯이 비어있지 않으면 인셋 폴백을 적용하지 않기 때문.
@@ -392,6 +400,88 @@ fun MainScaffold(
                     onChromeVisibleChange = { bibleChromeVisible = it },
                 )
             }
+        }
+    }
+}
+
+/**
+ * 컴팩트 하단 탭바(웹 하단 탭 파리티, 높이 56dp + 제스처 인셋).
+ * M3 NavigationBar 는 80dp 규격이라 56dp 로 줄이면 활성 인디케이터(알약)가 상하로 잘리고
+ * 라벨의 선택/비선택 색 대비도 약해 아이콘만 활성처럼 보였다.
+ * 웹과 동일하게 "아이콘 뒤 연한 프라이머리 필 + 아이콘·라벨 동시 강조"로 직접 그린다.
+ */
+@Composable
+private fun AppBottomTabBar(
+    isSelected: (TopLevelDestination) -> Boolean,
+    onTabClick: (TopLevelDestination) -> Unit,
+) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Column {
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .selectableGroup(),
+            ) {
+                TopLevelDestination.entries.forEach { dest ->
+                    val selected = isSelected(dest)
+                    val accent by animateColorAsState(
+                        targetValue = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        label = "tabAccent",
+                    )
+                    val pill by animateColorAsState(
+                        targetValue = if (selected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        } else {
+                            Color.Transparent
+                        },
+                        label = "tabPill",
+                    )
+                    val label = stringResource(dest.labelRes)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .selectable(
+                                selected = selected,
+                                role = Role.Tab,
+                                onClick = { onTabClick(dest) },
+                            ),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 44.dp, height = 26.dp)
+                                .clip(RoundedCornerShape(13.dp))
+                                .background(pill),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // 라벨 Text 가 탭 이름을 읽어주므로 아이콘 중복 낭독은 피한다.
+                            Icon(
+                                imageVector = dest.icon,
+                                contentDescription = null,
+                                tint = accent,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            color = accent,
+                        )
+                    }
+                }
+            }
+            // 제스처 내비게이션 인셋(safe area) — 웹 env(safe-area-inset-bottom) 파리티.
+            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         }
     }
 }

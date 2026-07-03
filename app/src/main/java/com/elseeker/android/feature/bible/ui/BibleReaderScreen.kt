@@ -173,7 +173,26 @@ fun BibleReaderScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = {
+        bottomBar = {
+            if (success != null) {
+                BibleBottomBar(
+                    centerLabel = title,
+                    onPrev = viewModel::goPrev,
+                    onCenter = { onOpenChapterList(viewModel.translationId, success.data.book.bookOrder) },
+                    onNext = viewModel::goNext,
+                    prevEnabled = success.data.hasPrev,
+                    nextEnabled = success.data.hasNext,
+                )
+            }
+        },
+    ) { inner ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(inner),
+        ) {
+            // 상단바를 topBar 슬롯(콘텐츠 위 오버레이) 대신 콘텐츠와 같은 Column 에 두어
+            // 타이틀이 바 아래로 밀려 가려지는 일이 구조적으로 불가능하게 한다(책 목록과 동일 구조).
             AnimatedVisibility(
                 visible = chromeVisible,
                 enter = expandVertically(),
@@ -188,27 +207,11 @@ fun BibleReaderScreen(
                     onProfileClick = onProfileClick,
                 )
             }
-        },
-        bottomBar = {
-            if (success != null) {
-                BibleBottomBar(
-                    centerLabel = title,
-                    onPrev = viewModel::goPrev,
-                    onCenter = { onOpenChapterList(viewModel.translationId, success.data.book.bookOrder) },
-                    onNext = viewModel::goNext,
-                    prevEnabled = success.data.hasPrev,
-                    nextEnabled = success.data.hasNext,
-                )
-            }
-        },
-    ) { inner ->
-        ResourceContent(
-            resource = state,
-            onRetry = viewModel::retry,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner),
-        ) { data ->
+            ResourceContent(
+                resource = state,
+                onRetry = viewModel::retry,
+                modifier = Modifier.fillMaxSize(),
+            ) { data ->
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = listState,
@@ -340,6 +343,7 @@ fun BibleReaderScreen(
                         },
                     )
                 }
+            }
             }
         }
     }

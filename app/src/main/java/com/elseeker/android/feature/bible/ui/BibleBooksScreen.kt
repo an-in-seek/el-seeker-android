@@ -147,7 +147,8 @@ fun BibleBooksScreen(
 
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 // 타이틀은 일반 콘텐츠라 스크롤과 함께 사라진다(웹 파리티).
-                item(key = "page-title") { BiblePageTitle(pageTitle) }
+                // 검색창 자체 상단 여백(8dp)과 합쳐 타이틀-검색창 간격이 16dp 가 되도록 하단 패딩을 줄인다.
+                item(key = "page-title") { BiblePageTitle(pageTitle, bottomPadding = 8.dp) }
 
                 // 검색 필드는 sticky — 상단바가 숨으면 화면 최상단에 붙는다(book-search.css top:52px↔0 파리티).
                 stickyHeader(key = "search") {
@@ -207,10 +208,10 @@ private fun BookSearchField(
     TextField(
         value = query,
         onValueChange = onQueryChange,
-        // 타이틀 자체 하단 여백(16dp)과 균형이 맞도록 top 패딩은 두지 않는다.
+        // 상단 8dp: sticky 로 화면 최상단에 붙었을 때도 여백이 유지된다(배경 Surface 가 함께 덮음).
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
         shape = RoundedCornerShape(12.dp),
         placeholder = { Text(stringResource(R.string.bible_books_search_placeholder)) },
         singleLine = true,
