@@ -12,12 +12,15 @@ local.properties
 /app/release
 *.apk
 *.aab
-/.omc/
-/.claude/
+
 /local.properties.example
 /keystore/elseeker-release.jks
 /tools/playstore/GeneratePlayStoreGraphics.java
 docs/security/
+
+# Claude
+.claude
+.omc
 
 # 로컬 개발용 심볼릭 링크 (백엔드/웹 프로젝트)
 /the_bible_project
