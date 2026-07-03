@@ -120,7 +120,7 @@ fun BibleBookOverviewScreen(
 
     val overview = (state as? UiResource.Success)?.data
     val chapterReadDesc = stringResource(R.string.bible_chapter_read_desc)
-    val pageTitle = overview?.detail?.bookName
+    val pageTitle = overview?.bookName
         ?: stringResource(R.string.bible_book_overview_title_fallback)
 
     // 스크롤 반응형(웹 파리티): 아래로 스크롤 → 상단바 숨김 + 하단 탭 숨김(onChromeVisibleChange),
@@ -148,7 +148,7 @@ fun BibleBookOverviewScreen(
         bottomBar = {
             val bookOrder = viewModel.bookOrder.takeIf { overview != null }
             BibleBottomBar(
-                centerLabel = overview?.detail?.bookName ?: stringResource(R.string.bible_book_overview_title_fallback),
+                centerLabel = overview?.bookName ?: stringResource(R.string.bible_book_overview_title_fallback),
                 onPrev = { bookOrder?.let { onSwitchBook(it - 1) } },
                 onCenter = onSelectBook,
                 onNext = { bookOrder?.let { onSwitchBook(it + 1) } },
@@ -239,9 +239,12 @@ fun BibleBookOverviewScreen(
         }
     }
 
-    if (showDescriptionDialog && overview != null) {
+    // 상세(detail)는 그리드보다 늦게 도착할 수 있다 — 도착 전 탭하면 플래그만 유지되다
+    // detail 이 채워지는 즉시 다이얼로그가 열린다.
+    val descriptionDetail = overview?.detail
+    if (showDescriptionDialog && descriptionDetail != null) {
         BookDescriptionDialog(
-            detail = overview.detail,
+            detail = descriptionDetail,
             onDismiss = { showDescriptionDialog = false },
         )
     }

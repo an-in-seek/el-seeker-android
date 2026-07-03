@@ -1,5 +1,6 @@
 package com.elseeker.android.core.di
 
+import android.content.Context
 import com.elseeker.android.BuildConfig
 import com.elseeker.android.core.network.AuthInterceptor
 import com.elseeker.android.core.network.ClientHeadersInterceptor
@@ -14,8 +15,10 @@ import com.elseeker.android.feature.support.data.InquiryApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.Cache
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -23,6 +26,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.create
+import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
@@ -74,6 +78,15 @@ object NetworkModule {
         }
     }
 
+    /**
+     * HTTP 디스크 캐시(20MB). 성경 번역본/책/장/절·검색·오늘의 말씀은 서버가
+     * `Cache-Control: public, max-age=1d` 를 주므로(불변 콘텐츠) 재진입 시 네트워크 없이 즉시 응답한다.
+     */
+    @Provides
+    @Singleton
+    fun provideHttpCache(@ApplicationContext context: Context): Cache =
+        Cache(File(context.cacheDir, "http-cache"), MAX_CACHE_BYTES)
+
     @Provides
     @Singleton
     @NoAuthClient
@@ -97,10 +110,13 @@ object NetworkModule {
         consentGateInterceptor: ConsentGateInterceptor,
         authenticator: TokenAuthenticator,
         logging: Interceptor,
+        cache: Cache,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
+            // 성경 콘텐츠 GET 은 서버 Cache-Control 에 따라 디스크 캐시에서 즉시 서빙된다.
+            .cache(cache)
             .addInterceptor(clientHeadersInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(consentGateInterceptor)
@@ -160,4 +176,6 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideBibleMyMemoApi(@AuthClient retrofit: Retrofit): BibleMyMemoApi = retrofit.create()
+
+    private const val MAX_CACHE_BYTES = 20L * 1024 * 1024 // 20MB
 }
