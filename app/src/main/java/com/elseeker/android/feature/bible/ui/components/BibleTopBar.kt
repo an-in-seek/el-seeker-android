@@ -42,10 +42,11 @@ fun BibleTopBar(
     onProfileClick: (() -> Unit)? = null,
 ) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceContainer) {
+        // 총 높이 56dp(버튼 40 + 상하 8) — 전통 툴바 표준이자 하단 탭(56dp)과 동일, 웹 헤더(52px) 근접.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBack != null) {
@@ -116,8 +117,8 @@ private fun TranslationChip(code: String, onClick: () -> Unit) {
     ) {
         Row(
             modifier = Modifier
-                .height(44.dp)
-                .padding(start = 14.dp, end = 6.dp),
+                .height(40.dp)
+                .padding(start = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -142,7 +143,7 @@ private fun TopBarIconButton(icon: ImageVector, contentDescription: String, onCl
             imageVector = icon,
             contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -156,7 +157,7 @@ private fun TopBarBox(onClick: () -> Unit, content: @Composable () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         androidx.compose.foundation.layout.Box(
-            modifier = Modifier.size(44.dp),
+            modifier = Modifier.size(40.dp),
             contentAlignment = Alignment.Center,
         ) {
             content()

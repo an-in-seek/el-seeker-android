@@ -9,7 +9,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.padding
@@ -28,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -130,7 +133,10 @@ fun MainScaffold(
                     enter = expandVertically(),
                     exit = shrinkVertically(),
                 ) {
-                    NavigationBar {
+                    // M3 기본 80dp 는 과해서 웹 하단 탭(56px)과 동일한 56dp 로 줄인다.
+                    // NavigationBar 내부가 제스처 인셋 패딩을 먹으므로 인셋만큼 높이에 더해준다.
+                    val navBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    NavigationBar(modifier = Modifier.height(56.dp + navBarInset)) {
                         TopLevelDestination.entries.forEach { dest ->
                             val selected = backStackEntry?.destination?.hierarchy
                                 ?.any { it.route == dest.route } == true
