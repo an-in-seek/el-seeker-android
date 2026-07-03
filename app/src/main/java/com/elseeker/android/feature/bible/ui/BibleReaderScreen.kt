@@ -29,16 +29,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -73,6 +74,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elseeker.android.R
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.core.ui.UiResource
+import com.elseeker.android.feature.bible.data.BibleReaderPrefs
 import com.elseeker.android.feature.bible.data.VersesDto
 import com.elseeker.android.feature.bible.ui.components.BibleBottomBar
 import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
@@ -135,7 +137,7 @@ fun BibleReaderScreen(
     val memoHasDesc = stringResource(R.string.bible_verse_has_memo_desc)
 
     var showChapterMemo by remember { mutableStateOf(false) }
-    var showFontSizeDialog by remember { mutableStateOf(false) }
+    var showFontSizeBar by remember { mutableStateOf(false) }
     var memoVerseNumber by remember { mutableStateOf<Int?>(null) }
     var selectedVerses by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var fabExpanded by remember { mutableStateOf(false) }
@@ -203,8 +205,21 @@ fun BibleReaderScreen(
                     translationCode = translationCode,
                     onChangeTranslation = onChangeTranslation,
                     onSearchClick = onSearchClick,
-                    onFontSizeClick = { showFontSizeDialog = true },
+                    onFontSizeClick = { showFontSizeBar = !showFontSizeBar },
                     onProfileClick = onProfileClick,
+                )
+            }
+            // Aa 인라인 글씨 크기 스트립(웹 verse-list 파리티) — 상단바 바로 아래에 펼쳐진다.
+            AnimatedVisibility(
+                visible = showFontSizeBar && chromeVisible,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                FontSizeStrip(
+                    currentStep = fontStep,
+                    onSelect = viewModel::setFontStep,
+                    onReset = { viewModel.setFontStep(BibleReaderPrefs.DEFAULT_FONT_STEP) },
+                    onClose = { showFontSizeBar = false },
                 )
             }
             ResourceContent(
@@ -348,15 +363,6 @@ fun BibleReaderScreen(
         }
     }
 
-    if (showFontSizeDialog) {
-        FontSizeDialog(
-            currentStep = fontStep,
-            onSelect = viewModel::setFontStep,
-            onReset = { viewModel.setFontStep(3) },
-            onDismiss = { showFontSizeDialog = false },
-        )
-    }
-
     if (showChapterMemo) {
         MemoDialog(
             title = chapterMemoTitle,
@@ -442,49 +448,80 @@ private fun ChapterActionsRow(
     }
 }
 
-/** Aa 글씨 크기 다이얼로그 — 5단계 라디오 선택 + 기본으로 초기화. */
+/**
+ * Aa 인라인 글씨 크기 스트립(웹 verse-list 파리티) — 상단바 아래 가로 스트립.
+ * 크기가 커지는 5개의 'Aa' 글리프(현재 단계는 파란 원 강조) + 기본으로(↺) + 닫기(×).
+ */
 @Composable
-private fun FontSizeDialog(
+private fun FontSizeStrip(
     currentStep: Int,
     onSelect: (Int) -> Unit,
     onReset: () -> Unit,
-    onDismiss: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val stepLabels = listOf(
-        stringResource(R.string.bible_font_step_1),
-        stringResource(R.string.bible_font_step_2),
-        stringResource(R.string.bible_font_step_3),
-        stringResource(R.string.bible_font_step_4),
-        stringResource(R.string.bible_font_step_5),
-    )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.bible_font_size_title), fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                stepLabels.forEachIndexed { index, label ->
-                    val step = index + 1
-                    Row(
+    // 툴바에 표시할 Aa 글리프 크기(단계별 시각 차이용, 본문 크기와는 별개).
+    val glyphSizes = listOf(13.sp, 16.sp, 19.sp, 23.sp, 27.sp)
+    val resetDesc = stringResource(R.string.bible_font_reset)
+    val closeDesc = stringResource(R.string.common_close)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+        shadowElevation = 3.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                (1..5).forEach { step ->
+                    val selected = step == currentStep
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(step) }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            )
+                            .clickable { onSelect(step) },
+                        contentAlignment = Alignment.Center,
                     ) {
-                        RadioButton(selected = step == currentStep, onClick = { onSelect(step) })
-                        Spacer(Modifier.width(8.dp))
-                        Text(label)
+                        Text(
+                            text = "Aa",
+                            fontSize = glyphSizes[step - 1],
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onReset) { Text(stringResource(R.string.bible_font_reset)) }
-        },
-    )
+            IconButton(onClick = onReset) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = resetDesc,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = closeDesc,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 /** 선택된 절들을 "{책이름} {장}:{절} 본문" 줄로 합친다(공유/복사 공용). */
