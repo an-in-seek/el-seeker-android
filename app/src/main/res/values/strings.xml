@@ -171,6 +171,7 @@
     <string name="dictionary_detail_title">사전</string>
     <string name="dictionary_detail_no_description">등록된 설명이 없습니다.</string>
     <string name="dictionary_detail_bible_reference_header">성경 참조</string>
+    <string name="dictionary_references_empty">등록된 관련 구절이 없습니다.</string>
 
     <!-- Study: static content -->
     <string name="static_content_title_fallback">학습</string>

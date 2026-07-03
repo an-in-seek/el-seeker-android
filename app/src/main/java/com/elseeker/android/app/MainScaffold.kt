@@ -242,6 +242,7 @@ fun MainScaffold(
                 StudyScreen(
                     onOpenDictionary = { navController.navigate(Routes.studyDictionary()) },
                     onOpenContent = { key -> navController.navigate(Routes.studyContent(key)) },
+                    onProfileClick = openAccountSheet,
                 )
             }
             composable(Routes.MY) {
