@@ -1,11 +1,14 @@
 package com.elseeker.android.feature.auth.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,7 +31,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -57,19 +63,35 @@ fun LoginScreen(
     val context = LocalContext.current
     val baseUrl = BuildConfig.BASE_URL.trimEnd('/')
 
+    // 웹 로그인 파리티 — 라이트 모드에서만 따뜻한 크림 톤 배경(다크 모드는 테마 배경 유지).
+    val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val backgroundModifier = if (isLight) {
+        Modifier.background(
+            Brush.verticalGradient(
+                listOf(Color(0xFFF6F1EA), Color(0xFFFDFBF8)),
+            ),
+        )
+    } else {
+        Modifier
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .then(backgroundModifier)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // 히어로 — 로고 + 타이틀 (login-hero)
+        // 히어로 — 로고 + 타이틀 (login-hero). 가로형 로크업이라 종횡비(4.63:1)를 유지한다.
         Image(
             painter = painterResource(R.drawable.elseeker_login),
             contentDescription = stringResource(R.string.login_logo_desc),
-            modifier = Modifier.size(96.dp),
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .height(40.dp)
+                .aspectRatio(4.63f),
         )
         Spacer(Modifier.height(16.dp))
         Text(
@@ -128,6 +150,8 @@ fun LoginScreen(
                     container = Color.White,
                     content = Color(0xFF3C4043),
                     enabled = !busy,
+                    // 흰색 버튼이 흰 카드에 묻히지 않도록 옅은 회색 테두리(웹 파리티).
+                    border = BorderStroke(1.dp, Color(0xFFDADCE0)),
                 ) { onSocialLogin(SocialProvider.GOOGLE) }
 
                 if (busy) {
@@ -185,12 +209,14 @@ private fun SocialButton(
     container: Color,
     content: Color,
     enabled: Boolean,
+    border: BorderStroke? = null,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(12.dp),
+        border = border,
         colors = ButtonDefaults.buttonColors(
             containerColor = container,
             contentColor = content,

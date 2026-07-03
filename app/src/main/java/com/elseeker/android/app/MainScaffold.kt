@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -49,7 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.elseeker.android.BuildConfig
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.openExternalUrl
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -118,8 +124,12 @@ fun MainScaffold(
         Routes.BIBLE_BOOK_DESCRIPTION,
         Routes.BIBLE_READER,
     )
-    val showBottomBar = isTopLevelRoute ||
-        (currentRoute in bibleChromeRoutes && bibleChromeVisible)
+    // 마이 탭이지만 게스트라 로그인 화면이 뜨는 경우엔 하단 탭을 숨긴다(웹 로그인 파리티).
+    val isGuestLoginScreen = currentRoute == Routes.MY &&
+        authState != AuthState.Authenticated && authState != AuthState.Offline
+    val showBottomBar = (isTopLevelRoute ||
+        (currentRoute in bibleChromeRoutes && bibleChromeVisible)) &&
+        !isGuestLoginScreen
 
     // App Links 로 보류된 라우트를 인증 완료(이 화면 진입) 후 1회 네비게이션한다.
     LaunchedEffect(pendingDeepLink) {
@@ -130,6 +140,7 @@ fun MainScaffold(
 
     // 시스템 뒤로가기(PRD §6 ★): 최상위 탭 중 홈이 아니면 홈으로, 홈에서 한 번 더 누르면 종료.
     val context = LocalContext.current
+    val baseUrl = BuildConfig.BASE_URL.trimEnd('/')
     var backPressedOnce by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     BackHandler(enabled = isTopLevelRoute) {
@@ -161,10 +172,11 @@ fun MainScaffold(
                     exit = shrinkVertically(),
                 ) {
                     AppBottomTabBar(
-                        // 하위 화면(bible/books/…, study/…, my/…, support/…)은 평면 라우트라
+                        tabs = bottomTabs,
+                        // 하위 화면(bible/books/…, study/…)은 평면 라우트라
                         // hierarchy 매칭으로는 소속 탭이 활성되지 않는다 — 라우트 소유 탭으로 판정한다.
                         isSelected = { dest -> dest.ownsRoute(currentRoute) },
-                        onTabClick = { dest ->
+                        onNativeClick = { dest ->
                             navController.navigate(dest.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
@@ -173,6 +185,8 @@ fun MainScaffold(
                                 restoreState = true
                             }
                         },
+                        // 게임·커뮤니티는 v1 네이티브 범위 밖 — 웹 화면을 Custom Tabs 로 위임한다.
+                        onExternalClick = { path -> openExternalUrl(context, "$baseUrl$path") },
                     )
                 }
                 // 탭이 숨겨져도(0 높이 placeable) 제스처 내비 인셋만큼은 확보한다 —
@@ -471,8 +485,10 @@ fun MainScaffold(
  */
 @Composable
 private fun AppBottomTabBar(
+    tabs: List<BottomTab>,
     isSelected: (TopLevelDestination) -> Boolean,
-    onTabClick: (TopLevelDestination) -> Unit,
+    onNativeClick: (TopLevelDestination) -> Unit,
+    onExternalClick: (String) -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.surface) {
         Column {
@@ -483,8 +499,9 @@ private fun AppBottomTabBar(
                     .height(56.dp)
                     .selectableGroup(),
             ) {
-                TopLevelDestination.entries.forEach { dest ->
-                    val selected = isSelected(dest)
+                tabs.forEach { tab ->
+                    // 외부(웹 위임) 탭은 화면에 머무르지 않으므로 항상 비활성 표시.
+                    val selected = tab is BottomTab.Native && isSelected(tab.dest)
                     val accent by animateColorAsState(
                         targetValue = if (selected) {
                             MaterialTheme.colorScheme.primary
@@ -501,7 +518,7 @@ private fun AppBottomTabBar(
                         },
                         label = "tabPill",
                     )
-                    val label = stringResource(dest.labelRes)
+                    val label = stringResource(tab.labelRes)
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -509,7 +526,12 @@ private fun AppBottomTabBar(
                             .selectable(
                                 selected = selected,
                                 role = Role.Tab,
-                                onClick = { onTabClick(dest) },
+                                onClick = {
+                                    when (tab) {
+                                        is BottomTab.Native -> onNativeClick(tab.dest)
+                                        is BottomTab.External -> onExternalClick(tab.path)
+                                    }
+                                },
                             ),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
@@ -523,7 +545,7 @@ private fun AppBottomTabBar(
                         ) {
                             // 라벨 Text 가 탭 이름을 읽어주므로 아이콘 중복 낭독은 피한다.
                             Icon(
-                                imageVector = dest.icon,
+                                imageVector = tab.icon,
                                 contentDescription = null,
                                 tint = accent,
                                 modifier = Modifier.size(20.dp),
@@ -544,3 +566,35 @@ private fun AppBottomTabBar(
         }
     }
 }
+
+/** 하단 탭 항목 — 네이티브 라우트 탭 또는 외부(웹) 위임 탭. */
+private sealed interface BottomTab {
+    val labelRes: Int
+    val icon: ImageVector
+
+    /** 네이티브 최상위 목적지 탭(홈/성경/학습). */
+    data class Native(val dest: TopLevelDestination) : BottomTab {
+        override val labelRes: Int get() = dest.labelRes
+        override val icon: ImageVector get() = dest.icon
+    }
+
+    /** 외부 웹 화면 위임 탭(게임/커뮤니티) — Custom Tabs 로 [path] 를 연다. */
+    data class External(
+        override val labelRes: Int,
+        override val icon: ImageVector,
+        val path: String,
+    ) : BottomTab
+}
+
+/**
+ * 웹 하단 메뉴와 동일한 종류·순서: 성경 · 학습 · 홈(중앙) · 게임 · 커뮤니티.
+ * 마이는 웹처럼 상단 프로필 아이콘(계정 메뉴)으로 이동하므로 하단 탭에서 제외한다.
+ * 게임·커뮤니티는 v1 네이티브 범위 밖이라 웹 화면을 Custom Tabs 로 위임한다(PRD §4-A).
+ */
+private val bottomTabs: List<BottomTab> = listOf(
+    BottomTab.Native(TopLevelDestination.BIBLE),
+    BottomTab.Native(TopLevelDestination.STUDY),
+    BottomTab.Native(TopLevelDestination.HOME),
+    BottomTab.External(R.string.tab_game, Icons.Outlined.SportsEsports, "/web/game"),
+    BottomTab.External(R.string.tab_community, Icons.AutoMirrored.Outlined.Chat, "/web/community"),
+)

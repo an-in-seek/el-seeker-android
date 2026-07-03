@@ -29,6 +29,8 @@
     <string name="tab_bible">성경</string>
     <string name="tab_study">학습</string>
     <string name="tab_my">마이</string>
+    <string name="tab_game">게임</string>
+    <string name="tab_community">커뮤니티</string>
 
     <!-- Login -->
     <string name="login_title">나만의 성경\n여정을 시작하세요</string>
