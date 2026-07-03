@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -156,10 +155,9 @@ fun MainScaffold(
                     exit = shrinkVertically(),
                 ) {
                     AppBottomTabBar(
-                        isSelected = { dest ->
-                            backStackEntry?.destination?.hierarchy
-                                ?.any { it.route == dest.route } == true
-                        },
+                        // 하위 화면(bible/books/…, study/…, my/…, support/…)은 평면 라우트라
+                        // hierarchy 매칭으로는 소속 탭이 활성되지 않는다 — 라우트 소유 탭으로 판정한다.
+                        isSelected = { dest -> dest.ownsRoute(currentRoute) },
                         onTabClick = { dest ->
                             navController.navigate(dest.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {

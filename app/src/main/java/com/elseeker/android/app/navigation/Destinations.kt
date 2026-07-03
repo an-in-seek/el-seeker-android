@@ -78,4 +78,21 @@ enum class TopLevelDestination(
     BIBLE(Routes.BIBLE, R.string.tab_bible, Icons.AutoMirrored.Outlined.MenuBook),
     STUDY(Routes.STUDY, R.string.tab_study, Icons.Outlined.School),
     MY(Routes.MY, R.string.tab_my, Icons.Outlined.Person),
+    ;
+
+    /**
+     * 현재 라우트가 이 탭 소속인지 — 하단 탭 활성 표시에 사용.
+     * 탭 루트(정확히 일치)뿐 아니라 그 탭에서 push 된 평면 하위 라우트(접두사 일치)도 소속으로 본다.
+     * 마이 탭은 별도 경로의 1:1 문의(support/…)까지 포함한다.
+     */
+    fun ownsRoute(route: String?): Boolean {
+        if (route == null) return false
+        if (route == this.route) return true
+        return when (this) {
+            HOME -> false
+            BIBLE -> route.startsWith("bible/")
+            STUDY -> route.startsWith("study/")
+            MY -> route.startsWith("my/") || route.startsWith("support/")
+        }
+    }
 }
