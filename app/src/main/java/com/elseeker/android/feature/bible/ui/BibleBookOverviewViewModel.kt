@@ -104,6 +104,8 @@ class BibleBookOverviewViewModel @Inject constructor(
                     readChapters = emptySet(),
                 )
             )
+            // 인접 책(±1) 장 목록을 미리 캐시해 이전/다음 이동을 즉시 렌더한다.
+            prefetchNeighbors()
 
             // 읽음 진도는 도착하는 대로 채운다 — 그리드를 막지 않는다.
             val read = readDeferred.await()
@@ -111,6 +113,15 @@ class BibleBookOverviewViewModel @Inject constructor(
                 _state.value = UiResource.Success(current.data.copy(readChapters = read))
             }
             _bookMemo.value = loadBookMemo()
+        }
+    }
+
+    /** 이전/다음 책의 장 목록을 백그라운드로 미리 조회(결과는 Repository 캐시에만 적재). 실패 무시. */
+    private fun prefetchNeighbors() {
+        viewModelScope.launch {
+            listOf(bookOrder - 1, bookOrder + 1)
+                .filter { it in 1..66 }
+                .forEach { repository.chapters(translationId, it) }
         }
     }
 

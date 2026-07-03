@@ -18,6 +18,7 @@ import com.elseeker.android.feature.bible.data.MemoRequest
 import com.elseeker.android.feature.bible.data.TranslationDto
 import com.elseeker.android.feature.bible.data.VersesDto
 import kotlinx.serialization.json.Json
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,19 +33,28 @@ class BibleRepository @Inject constructor(
     private val json: Json,
 ) {
 
+    // 세션 수명 동안 유지되는 인메모리 캐시 — 성경 콘텐츠(번역본/책/장/절/책상세)는 불변이라
+    // 화면 재진입·이전/다음 책 이동마다 반복되던 네트워크·역직렬화를 제거한다(디스크 캐시보다 빠름).
+    @Volatile private var cachedTranslations: List<TranslationDto>? = null
+    private val booksCache = ConcurrentHashMap<Long, List<BookDto>>()
+    private val chaptersCache = ConcurrentHashMap<String, ChaptersDto>()
+    private val bookDetailCache = ConcurrentHashMap<String, BookDetailDto>()
+    private val versesCache = ConcurrentHashMap<String, VersesDto>()
+
     /**
      * 번역본 전체 목록(`GET /api/v1/bibles/translations`) — 웹 translation-list 와 동일하게
-     * 서버 응답을 필터 없이 그대로 반환한다. 번역본 목록 화면이 사용.
+     * 서버 응답을 필터 없이 그대로 반환한다. 번역본 목록 화면이 사용. 최초 1회만 네트워크.
      */
-    suspend fun translations(): Result<List<TranslationDto>> =
-        runCatching { safeApiCall(json) { bibleApi.translations() } }
+    suspend fun translations(): Result<List<TranslationDto>> = runCatching {
+        cachedTranslations ?: safeApiCall(json) { bibleApi.translations() }.also { cachedTranslations = it }
+    }
 
     /**
      * 노출 가능한 번역본만 반환(PRD §4-A.9 데이터 게이트) — 검색 기본 번역본 등
      * "단일 기본 번역본"이 필요한 흐름에서 사용. v1 은 본문 seed 가 완비된 KRV 만 허용.
      */
     suspend fun visibleTranslations(): Result<List<TranslationDto>> = runCatching {
-        val all = safeApiCall(json) { bibleApi.translations() }
+        val all = translations().getOrThrow()
         all.filter { it.translationType in VISIBLE_TRANSLATIONS }
             .ifEmpty { all.filter { it.translationType == DEFAULT_TRANSLATION } }
     }
@@ -52,11 +62,16 @@ class BibleRepository @Inject constructor(
     suspend fun dailyVerse(): Result<com.elseeker.android.feature.bible.data.DailyVerseDto> =
         runCatching { safeApiCall(json) { bibleApi.dailyVerse(DEFAULT_TRANSLATION) } }
 
-    suspend fun books(translationId: Long): Result<List<BookDto>> =
-        runCatching { safeApiCall(json) { bibleApi.books(translationId) } }
+    suspend fun books(translationId: Long): Result<List<BookDto>> = runCatching {
+        booksCache[translationId] ?: safeApiCall(json) { bibleApi.books(translationId) }
+            .also { booksCache[translationId] = it }
+    }
 
-    suspend fun chapters(translationId: Long, bookOrder: Int): Result<ChaptersDto> =
-        runCatching { safeApiCall(json) { bibleApi.chapters(translationId, bookOrder) } }
+    suspend fun chapters(translationId: Long, bookOrder: Int): Result<ChaptersDto> = runCatching {
+        val key = "$translationId:$bookOrder"
+        chaptersCache[key] ?: safeApiCall(json) { bibleApi.chapters(translationId, bookOrder) }
+            .also { chaptersCache[key] = it }
+    }
 
     /** 읽은 장 번호 목록(인증 필요). 실패해도 목록 화면을 막지 않도록 호출부에서 빈 목록 폴백. */
     suspend fun readChapters(translationId: Long, bookOrder: Int): Result<List<Int>> =
@@ -65,7 +80,11 @@ class BibleRepository @Inject constructor(
         }
 
     suspend fun verses(translationId: Long, bookOrder: Int, chapterNumber: Int): Result<VersesDto> =
-        runCatching { safeApiCall(json) { bibleApi.verses(translationId, bookOrder, chapterNumber) } }
+        runCatching {
+            val key = "$translationId:$bookOrder:$chapterNumber"
+            versesCache[key] ?: safeApiCall(json) { bibleApi.verses(translationId, bookOrder, chapterNumber) }
+                .also { versesCache[key] = it }
+        }
 
     suspend fun navigate(
         translationId: Long,
@@ -77,7 +96,11 @@ class BibleRepository @Inject constructor(
     }
 
     suspend fun bookDetail(translationId: Long, bookOrder: Int): Result<BookDetailDto> =
-        runCatching { safeApiCall(json) { bibleApi.bookDetail(translationId, bookOrder) } }
+        runCatching {
+            val key = "$translationId:$bookOrder"
+            bookDetailCache[key] ?: safeApiCall(json) { bibleApi.bookDetail(translationId, bookOrder) }
+                .also { bookDetailCache[key] = it }
+        }
 
     /** 절 검색(public). keyword 공백이면 호출자가 막는다. */
     suspend fun search(
