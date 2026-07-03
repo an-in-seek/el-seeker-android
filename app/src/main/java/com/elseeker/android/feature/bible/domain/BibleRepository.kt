@@ -33,8 +33,15 @@ class BibleRepository @Inject constructor(
 ) {
 
     /**
-     * 노출 가능한 번역본만 반환(PRD §4-A.9 데이터 게이트).
-     * v1 은 본문 seed 가 완비된 KRV 만 허용한다. NKRV/KJV 는 백엔드 visibility 정책 확정 전까지 숨김.
+     * 번역본 전체 목록(`GET /api/v1/bibles/translations`) — 웹 translation-list 와 동일하게
+     * 서버 응답을 필터 없이 그대로 반환한다. 번역본 목록 화면이 사용.
+     */
+    suspend fun translations(): Result<List<TranslationDto>> =
+        runCatching { safeApiCall(json) { bibleApi.translations() } }
+
+    /**
+     * 노출 가능한 번역본만 반환(PRD §4-A.9 데이터 게이트) — 검색 기본 번역본 등
+     * "단일 기본 번역본"이 필요한 흐름에서 사용. v1 은 본문 seed 가 완비된 KRV 만 허용.
      */
     suspend fun visibleTranslations(): Result<List<TranslationDto>> = runCatching {
         val all = safeApiCall(json) { bibleApi.translations() }
