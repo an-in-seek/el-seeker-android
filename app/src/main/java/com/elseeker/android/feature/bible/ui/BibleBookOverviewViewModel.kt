@@ -92,9 +92,12 @@ class BibleBookOverviewViewModel @Inject constructor(
             UiResource.Loading
         }
         viewModelScope.launch {
-            // 장 목록(핵심)과 읽음 진도를 병렬로 조회한다.
+            // 장 목록·읽음 진도·책 메모를 모두 병렬로 조회한다.
+            // 각 응답은 서로 독립된 StateFlow 를 갱신해, 먼저 오는 것부터 개별적으로 즉시 렌더된다.
             val chaptersDeferred = async { repository.chapters(translationId, bookOrder) }
             val readDeferred = async { loadReadChapters() }
+            // 책 메모는 읽음 진도와 독립 — 병렬로 조회해 도착 즉시 반영(읽음 완료를 기다리지 않음).
+            launch { _bookMemo.value = loadBookMemo() }
 
             // 장 목록이 오면 즉시 그리드를 렌더한다 — 제목·요약·장 번호가 모두 이 응답에 있다.
             val chaptersDto = chaptersDeferred.await().getOrElse {
@@ -107,12 +110,11 @@ class BibleBookOverviewViewModel @Inject constructor(
             // 인접 책(±1) 장 목록을 미리 캐시해 이전/다음 이동을 즉시 렌더한다.
             prefetchNeighbors()
 
-            // 읽음 진도는 도착하는 대로 채운다 — 그리드를 막지 않는다.
+            // 읽음 진도는 도착하는 대로 초록 체크로 채운다 — 그리드를 막지 않는다.
             val read = readDeferred.await()
             (_state.value as? UiResource.Success)?.let { current ->
                 _state.value = UiResource.Success(current.data.copy(readChapters = read))
             }
-            _bookMemo.value = loadBookMemo()
         }
     }
 
