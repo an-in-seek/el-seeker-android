@@ -161,7 +161,11 @@
 
     <!-- Study: dictionary list -->
     <string name="dictionary_list_title">성경 사전</string>
-    <string name="dictionary_list_search_placeholder">단어 검색</string>
+    <string name="dictionary_list_search_placeholder">찾고 싶은 성경 용어를 입력하세요</string>
+    <string name="dictionary_list_count">성경 사전 %1$d건</string>
+    <string name="dictionary_popular_title">인기 검색어</string>
+    <string name="dictionary_meaning_header">의미 및 설명</string>
+    <string name="dictionary_references_header">관련 성경 구절</string>
 
     <!-- Study: dictionary detail -->
     <string name="dictionary_detail_title">사전</string>

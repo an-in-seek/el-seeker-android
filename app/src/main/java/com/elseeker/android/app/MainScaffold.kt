@@ -324,13 +324,17 @@ fun MainScaffold(
                 DictionaryListScreen(
                     onItemClick = { id -> navController.navigate(Routes.studyDictionaryDetail(id)) },
                     onBack = { navController.popBackStack() },
+                    onProfileClick = openAccountSheet,
                 )
             }
             composable(
                 route = Routes.STUDY_DICTIONARY_DETAIL,
                 arguments = listOf(navArgument("id") { type = NavType.StringType }),
             ) {
-                DictionaryDetailScreen(onBack = { navController.popBackStack() })
+                DictionaryDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onProfileClick = openAccountSheet,
+                )
             }
             composable(
                 route = Routes.STUDY_CONTENT,

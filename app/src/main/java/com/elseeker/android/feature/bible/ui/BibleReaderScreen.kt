@@ -4,6 +4,8 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +14,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -584,38 +587,38 @@ private fun VerseSelectionFab(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.End) {
-        if (expanded) {
-            FabMenuItem(icon = "📕", label = shareLabel, onClick = onShare)
-            Spacer(Modifier.height(10.dp))
-            FabMenuItem(icon = "📋", label = copyLabel, onClick = onCopy)
-            Spacer(Modifier.height(10.dp))
-            FabMenuItem(icon = "📝", label = memoLabel, onClick = onMemo, enabled = memoEnabled)
-            Spacer(Modifier.height(12.dp))
-            // 형광펜 색상 2×3 그리드 + 지우기 — 웹처럼 스크림 위에 개별 원으로 떠 있다.
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                HIGHLIGHT_SWATCHES.chunked(3).forEach { rowSwatches ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        rowSwatches.forEach { swatch ->
-                            SwatchCircle(color = swatch.color, onClick = { onHighlight(swatch.wire) })
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
+        ) {
+            Column(horizontalAlignment = Alignment.End) {
+                // 액션 알약(공유/복사/메모) — 동일 폭으로 정렬해 시각적 안정감을 준다.
+                Column(
+                    modifier = Modifier.width(IntrinsicSize.Max),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    FabMenuItem("📤", shareLabel, onShare, Modifier.fillMaxWidth())
+                    FabMenuItem("📋", copyLabel, onCopy, Modifier.fillMaxWidth())
+                    FabMenuItem("📝", memoLabel, onMemo, Modifier.fillMaxWidth(), enabled = memoEnabled)
+                }
+                Spacer(Modifier.height(16.dp))
+                // 형광펜 색상 3×2 그리드 + 지우기(그리드 좌하단) — 그리드 폭에 맞춰 우측 정렬.
+                Column(
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    HIGHLIGHT_SWATCHES.chunked(3).forEach { rowSwatches ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            rowSwatches.forEach { swatch ->
+                                SwatchCircle(color = swatch.color, onClick = { onHighlight(swatch.wire) })
+                            }
                         }
                     }
+                    ClearCircle(contentDescription = highlightClearDesc, onClick = { onHighlight(null) })
                 }
-                // 지우기(형광펜 해제)
-                Surface(
-                    onClick = { onHighlight(null) },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 2.dp,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .semantics { contentDescription = highlightClearDesc },
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("✕", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+                Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(14.dp))
         }
         FloatingActionButton(onClick = onToggle) {
             Icon(
@@ -626,35 +629,63 @@ private fun VerseSelectionFab(
     }
 }
 
-/** 형광펜 색상 원 하나 — 스크림 위에서 도드라지도록 그림자를 준다. */
+/** 형광펜 색상 원(44dp) — 스크림 위에서 도드라지도록 그림자를 준다. */
 @Composable
 private fun SwatchCircle(color: Color, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = CircleShape,
         color = color,
-        shadowElevation = 2.dp,
-        modifier = Modifier.size(40.dp),
+        shadowElevation = 3.dp,
+        modifier = Modifier.size(44.dp),
     ) {}
 }
 
+/** 형광펜 해제(×) 원 — 색상 원과 동일 크기/그림자, 중립색. */
 @Composable
-private fun FabMenuItem(icon: String, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+private fun ClearCircle(contentDescription: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp,
+        modifier = Modifier
+            .size(44.dp)
+            .semantics { this.contentDescription = contentDescription },
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text("✕", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** 우하단 FAB 액션 알약(아이콘 + 라벨). 동일 폭 정렬을 위해 호출부에서 fillMaxWidth 를 준다. */
+@Composable
+private fun FabMenuItem(
+    icon: String,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 3.dp,
-        modifier = Modifier.padding(bottom = 8.dp),
+        shadowElevation = 4.dp,
+        modifier = modifier,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(icon, fontSize = 16.sp, modifier = Modifier.padding(end = 8.dp))
+            Text(icon, fontSize = 18.sp)
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
                 color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

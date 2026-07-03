@@ -12,9 +12,13 @@ class DictionaryRepository @Inject constructor(
     private val json: Json,
 ) {
 
-    /** keyword 가 null 또는 공백이면 전체 목록을 반환한다. */
-    suspend fun list(keyword: String?): Result<DictionarySliceDto> =
-        runCatching { safeApiCall(json) { api.list(keyword = keyword) } }
+    /** keyword 가 null 또는 공백이면 전체 목록을 반환한다. [page] 로 무한 스크롤 페이지네이션. */
+    suspend fun list(keyword: String?, page: Int = 0): Result<DictionarySliceDto> =
+        runCatching { safeApiCall(json) { api.list(keyword = keyword, page = page, size = PAGE_SIZE) } }
+
+    companion object {
+        const val PAGE_SIZE = 20
+    }
 
     /** 사전 상세 + 참조 목록을 함께 조회한다. 상세는 필수, 참조는 실패 시 빈 목록으로 폴백한다. */
     suspend fun detail(id: Long): Result<DictionaryDetailWithRefs> = runCatching {

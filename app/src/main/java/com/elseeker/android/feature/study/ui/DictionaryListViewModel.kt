@@ -35,6 +35,15 @@ class DictionaryListViewModel @Inject constructor(
     private val _ranking = MutableStateFlow<List<DictionaryRankingItemDto>>(emptyList())
     val ranking: StateFlow<List<DictionaryRankingItemDto>> = _ranking.asStateFlow()
 
+    // 전체 건수("성경 사전 N건")와 페이지네이션 상태.
+    private val _totalCount = MutableStateFlow<Long?>(null)
+    val totalCount: StateFlow<Long?> = _totalCount.asStateFlow()
+
+    private var currentKeyword: String? = null
+    private var page = 0
+    private var hasNext = false
+    private var loadingMore = false
+
     init {
         // 프리필 키워드가 있으면 그 검색어로 시작(웹 /web/study/dictionary?keyword= 과 동일).
         if (!initialKeyword.isNullOrBlank()) _query.value = initialKeyword
@@ -52,14 +61,35 @@ class DictionaryListViewModel @Inject constructor(
         search()
     }
 
-    /** 현재 query 로 사전 목록을 로드한다. 공백이면 null 을 전달해 전체를 조회한다. */
+    /** 현재 query 로 사전 목록 첫 페이지를 로드한다. 공백이면 null 을 전달해 전체를 조회한다. */
     fun search() {
         _state.value = UiResource.Loading
-        val keyword = _query.value.trim().ifBlank { null }
+        page = 0
+        currentKeyword = _query.value.trim().ifBlank { null }
         viewModelScope.launch {
-            repository.list(keyword = keyword)
-                .onSuccess { _state.value = UiResource.Success(it.content) }
+            repository.list(keyword = currentKeyword, page = 0)
+                .onSuccess {
+                    _totalCount.value = it.totalCount
+                    hasNext = it.hasNext
+                    _state.value = UiResource.Success(it.content)
+                }
                 .onFailure { _state.value = it.toUiError() }
+        }
+    }
+
+    /** 스크롤이 목록 끝에 가까워지면 다음 페이지를 이어 붙인다(무한 스크롤). */
+    fun loadMore() {
+        val current = _state.value as? UiResource.Success ?: return
+        if (!hasNext || loadingMore) return
+        loadingMore = true
+        viewModelScope.launch {
+            repository.list(keyword = currentKeyword, page = page + 1)
+                .onSuccess {
+                    page += 1
+                    hasNext = it.hasNext
+                    _state.value = UiResource.Success(current.data + it.content)
+                }
+            loadingMore = false
         }
     }
 
