@@ -17,6 +17,11 @@ import com.elseeker.android.feature.bible.data.MemoItemDto
 import com.elseeker.android.feature.bible.data.MemoRequest
 import com.elseeker.android.feature.bible.data.TranslationDto
 import com.elseeker.android.feature.bible.data.VersesDto
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.serialization.json.Json
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -35,18 +40,45 @@ class BibleRepository @Inject constructor(
 
     // 세션 수명 동안 유지되는 인메모리 캐시 — 성경 콘텐츠(번역본/책/장/절/책상세)는 불변이라
     // 화면 재진입·이전/다음 책 이동마다 반복되던 네트워크·역직렬화를 제거한다(디스크 캐시보다 빠름).
-    @Volatile private var cachedTranslations: List<TranslationDto>? = null
+    // 값 캐시(성공값 보관) + 진행 중 요청 캐시(Deferred)로 동일 키 동시 요청을 1회로 합친다(stampede 방지).
+    private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val translationsCache = ConcurrentHashMap<String, List<TranslationDto>>()
+    private val translationsInFlight = ConcurrentHashMap<String, Deferred<List<TranslationDto>>>()
     private val booksCache = ConcurrentHashMap<Long, List<BookDto>>()
+    private val booksInFlight = ConcurrentHashMap<Long, Deferred<List<BookDto>>>()
     private val chaptersCache = ConcurrentHashMap<String, ChaptersDto>()
+    private val chaptersInFlight = ConcurrentHashMap<String, Deferred<ChaptersDto>>()
     private val bookDetailCache = ConcurrentHashMap<String, BookDetailDto>()
+    private val bookDetailInFlight = ConcurrentHashMap<String, Deferred<BookDetailDto>>()
     private val versesCache = ConcurrentHashMap<String, VersesDto>()
+    private val versesInFlight = ConcurrentHashMap<String, Deferred<VersesDto>>()
+
+    /**
+     * 값 캐시 히트면 즉시 반환하고, 아니면 동일 키의 진행 중 요청이 있으면 그 결과를 공유하며,
+     * 없을 때만 새로 조회한다. 실패한 요청은 in-flight 에서 제거돼 다음 호출이 재시도한다.
+     */
+    private suspend fun <K : Any, V : Any> coalesced(
+        valueCache: ConcurrentHashMap<K, V>,
+        inFlight: ConcurrentHashMap<K, Deferred<V>>,
+        key: K,
+        fetch: suspend () -> V,
+    ): V {
+        valueCache[key]?.let { return it }
+        val deferred = inFlight.computeIfAbsent(key) {
+            cacheScope.async { fetch().also { valueCache[key] = it } }
+                .also { d -> d.invokeOnCompletion { inFlight.remove(key) } }
+        }
+        return deferred.await()
+    }
 
     /**
      * 번역본 전체 목록(`GET /api/v1/bibles/translations`) — 웹 translation-list 와 동일하게
      * 서버 응답을 필터 없이 그대로 반환한다. 번역본 목록 화면이 사용. 최초 1회만 네트워크.
      */
     suspend fun translations(): Result<List<TranslationDto>> = runCatching {
-        cachedTranslations ?: safeApiCall(json) { bibleApi.translations() }.also { cachedTranslations = it }
+        coalesced(translationsCache, translationsInFlight, TRANSLATIONS_KEY) {
+            safeApiCall(json) { bibleApi.translations() }
+        }
     }
 
     /**
@@ -63,20 +95,21 @@ class BibleRepository @Inject constructor(
         runCatching { safeApiCall(json) { bibleApi.dailyVerse(DEFAULT_TRANSLATION) } }
 
     suspend fun books(translationId: Long): Result<List<BookDto>> = runCatching {
-        booksCache[translationId] ?: safeApiCall(json) { bibleApi.books(translationId) }
-            .also { booksCache[translationId] = it }
+        coalesced(booksCache, booksInFlight, translationId) {
+            safeApiCall(json) { bibleApi.books(translationId) }
+        }
     }
 
     /** 인메모리 캐시된 번역본 목록을 동기로 즉시 반환(없으면 null). 로딩 스피너 깜빡임 방지용. */
-    fun peekTranslations(): List<TranslationDto>? = cachedTranslations
+    fun peekTranslations(): List<TranslationDto>? = translationsCache[TRANSLATIONS_KEY]
 
     /** 인메모리 캐시된 책 목록을 동기로 즉시 반환(없으면 null). 로딩 스피너 깜빡임 방지용. */
     fun peekBooks(translationId: Long): List<BookDto>? = booksCache[translationId]
 
     suspend fun chapters(translationId: Long, bookOrder: Int): Result<ChaptersDto> = runCatching {
-        val key = "$translationId:$bookOrder"
-        chaptersCache[key] ?: safeApiCall(json) { bibleApi.chapters(translationId, bookOrder) }
-            .also { chaptersCache[key] = it }
+        coalesced(chaptersCache, chaptersInFlight, "$translationId:$bookOrder") {
+            safeApiCall(json) { bibleApi.chapters(translationId, bookOrder) }
+        }
     }
 
     /** 인메모리 캐시에 이미 있는 장 목록을 동기로 즉시 반환(없으면 null). 로딩 스피너 깜빡임 방지용. */
@@ -91,9 +124,9 @@ class BibleRepository @Inject constructor(
 
     suspend fun verses(translationId: Long, bookOrder: Int, chapterNumber: Int): Result<VersesDto> =
         runCatching {
-            val key = "$translationId:$bookOrder:$chapterNumber"
-            versesCache[key] ?: safeApiCall(json) { bibleApi.verses(translationId, bookOrder, chapterNumber) }
-                .also { versesCache[key] = it }
+            coalesced(versesCache, versesInFlight, "$translationId:$bookOrder:$chapterNumber") {
+                safeApiCall(json) { bibleApi.verses(translationId, bookOrder, chapterNumber) }
+            }
         }
 
     suspend fun navigate(
@@ -107,9 +140,9 @@ class BibleRepository @Inject constructor(
 
     suspend fun bookDetail(translationId: Long, bookOrder: Int): Result<BookDetailDto> =
         runCatching {
-            val key = "$translationId:$bookOrder"
-            bookDetailCache[key] ?: safeApiCall(json) { bibleApi.bookDetail(translationId, bookOrder) }
-                .also { bookDetailCache[key] = it }
+            coalesced(bookDetailCache, bookDetailInFlight, "$translationId:$bookOrder") {
+                safeApiCall(json) { bibleApi.bookDetail(translationId, bookOrder) }
+            }
         }
 
     /** 절 검색(public). keyword 공백이면 호출자가 막는다. */
@@ -238,6 +271,7 @@ class BibleRepository @Inject constructor(
         }
 
     companion object {
+        private const val TRANSLATIONS_KEY = "all"
         private const val DEFAULT_TRANSLATION = "KRV"
         private val VISIBLE_TRANSLATIONS = setOf("KRV")
     }
