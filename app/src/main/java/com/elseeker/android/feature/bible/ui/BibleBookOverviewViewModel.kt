@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.elseeker.android.core.auth.SessionManager
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.core.ui.toUiError
-import com.elseeker.android.feature.bible.data.BookDetailDto
 import com.elseeker.android.feature.bible.data.BookMemoItemDto
 import com.elseeker.android.feature.bible.data.ChaptersDto
 import com.elseeker.android.feature.bible.domain.BibleRepository
@@ -23,9 +22,8 @@ import javax.inject.Inject
 
 /** 책 개요 + 장 목록 + 읽은 장을 묶은 화면 모델. */
 data class BookOverview(
-    // 설명 다이얼로그용 상세 — 장 목록보다 늦게 도착해도 그리드는 먼저 렌더한다(null 허용).
-    val detail: BookDetailDto?,
-    // 제목/하단바 라벨 — 장 목록 응답(ChaptersDto.book)에서 즉시 확보한다.
+    // 제목/하단바 라벨·요약 행·장 번호는 모두 장 목록 응답(ChaptersDto.book)에서 확보한다.
+    // 책 상세(저자·년도·배경 등)는 별도 개요 화면에서 조회하므로 여기서는 부르지 않는다.
     val bookName: String,
     val descriptionSummary: String,
     val chapters: List<Int>,
@@ -88,22 +86,18 @@ class BibleBookOverviewViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            // 세 호출을 병렬로 시작한다 — 기존엔 detail→chapters→read 를 직렬로 기다려
-            // 그리드가 뜨기까지 3-왕복이 걸렸다. 병렬이면 체감 지연이 최대 1-왕복으로 준다.
-            val detailDeferred = async { repository.bookDetail(translationId, bookOrder) }
+            // 장 목록(핵심)과 읽음 진도를 병렬로 조회한다.
             val chaptersDeferred = async { repository.chapters(translationId, bookOrder) }
             val readDeferred = async { loadReadChapters() }
 
-            // 장 목록(핵심)이 오면 즉시 그리드를 렌더한다 — 제목·요약·장 번호가 모두 이 응답에 있다.
+            // 장 목록이 오면 즉시 그리드를 렌더한다 — 제목·요약·장 번호가 모두 이 응답에 있다.
             val chaptersDto = chaptersDeferred.await().getOrElse {
-                detailDeferred.cancel()
                 readDeferred.cancel()
                 _state.value = it.toUiError()
                 return@launch
             }
             _state.value = UiResource.Success(
                 BookOverview(
-                    detail = null,
                     bookName = chaptersDto.book.bookName,
                     descriptionSummary = chaptersDto.book.descriptionSummary,
                     chapters = chaptersDto.chapterNumbers(),
@@ -111,11 +105,10 @@ class BibleBookOverviewViewModel @Inject constructor(
                 )
             )
 
-            // 설명 상세·읽음 진도는 도착하는 대로 채운다 — 그리드를 막지 않는다.
+            // 읽음 진도는 도착하는 대로 채운다 — 그리드를 막지 않는다.
             val read = readDeferred.await()
-            val detail = detailDeferred.await().getOrNull()
             (_state.value as? UiResource.Success)?.let { current ->
-                _state.value = UiResource.Success(current.data.copy(detail = detail, readChapters = read))
+                _state.value = UiResource.Success(current.data.copy(readChapters = read))
             }
             _bookMemo.value = loadBookMemo()
         }

@@ -123,6 +123,12 @@
 
     <!-- Bible: book overview -->
     <string name="bible_book_overview_title_fallback">책 개요</string>
+    <string name="bible_book_desc_summary">요약</string>
+    <string name="bible_book_desc_author">저자</string>
+    <string name="bible_book_desc_written_year">년도</string>
+    <string name="bible_book_desc_period">시대</string>
+    <string name="bible_book_desc_background">배경</string>
+    <string name="bible_book_desc_content">내용</string>
     <string name="bible_book_overview_author">저자 %1$s</string>
 
     <!-- Bible: my memos -->

@@ -66,6 +66,7 @@ import com.elseeker.android.feature.bible.ui.BibleBookOverviewScreen
 import com.elseeker.android.feature.bible.ui.BibleBooksScreen
 import com.elseeker.android.feature.bible.ui.TranslationListScreen
 import com.elseeker.android.feature.bible.ui.BibleReaderScreen
+import com.elseeker.android.feature.bible.ui.BookDescriptionScreen
 import com.elseeker.android.feature.bible.ui.BibleSearchScreen
 import com.elseeker.android.feature.bible.ui.MyMemosScreen
 import com.elseeker.android.feature.home.ui.HomeScreen
@@ -106,7 +107,12 @@ fun MainScaffold(
     // 성경 책/장 목록 화면은 하단 탭을 기본 노출하되 스크롤 방향에 따라 숨김/표시한다(웹 bottom-tab-hidden 파리티).
     var bibleChromeVisible by remember { mutableStateOf(true) }
     LaunchedEffect(currentRoute) { bibleChromeVisible = true }
-    val bibleChromeRoutes = setOf(Routes.BIBLE_BOOKS, Routes.BIBLE_BOOK_OVERVIEW, Routes.BIBLE_READER)
+    val bibleChromeRoutes = setOf(
+        Routes.BIBLE_BOOKS,
+        Routes.BIBLE_BOOK_OVERVIEW,
+        Routes.BIBLE_BOOK_DESCRIPTION,
+        Routes.BIBLE_READER,
+    )
     val showBottomBar = isTopLevelRoute ||
         (currentRoute in bibleChromeRoutes && bibleChromeVisible)
 
@@ -354,10 +360,38 @@ fun MainScaffold(
                         }
                     },
                     onOpenContent = { key -> navController.navigate(Routes.studyContent(key)) },
+                    // 📘 요약 행 → 책 개요 전체 화면(웹 book-description).
+                    onOpenDescription = { navController.navigate(Routes.bibleBookDescription(tid, book)) },
                     onChangeTranslation = openTranslationList,
                     onSearchClick = openBibleSearch,
                     onProfileClick = openMyTab,
                     // 화면 내 스크롤 방향 → 하단 탭 숨김/표시 연동.
+                    onChromeVisibleChange = { bibleChromeVisible = it },
+                )
+            }
+            composable(
+                route = Routes.BIBLE_BOOK_DESCRIPTION,
+                arguments = listOf(
+                    navArgument("translationId") { type = NavType.StringType },
+                    navArgument("bookOrder") { type = NavType.StringType },
+                ),
+            ) { entry ->
+                val tid = entry.arguments?.getString("translationId")?.toLongOrNull() ?: return@composable
+                BookDescriptionScreen(
+                    onBack = { navController.popBackStack() },
+                    // 하단 내비 중앙(📖 책 이름) → 해당 책의 장 목록.
+                    onOpenChapterList = { t, book ->
+                        navController.navigate(Routes.bibleBookOverview(t, book))
+                    },
+                    // 이전/다음 책 — 현재 개요를 새 책 개요로 교체(replace).
+                    onSwitchBook = { newBookOrder ->
+                        navController.navigate(Routes.bibleBookDescription(tid, newBookOrder)) {
+                            popUpTo(Routes.BIBLE_BOOK_DESCRIPTION) { inclusive = true }
+                        }
+                    },
+                    onChangeTranslation = openTranslationList,
+                    onSearchClick = openBibleSearch,
+                    onProfileClick = openMyTab,
                     onChromeVisibleChange = { bibleChromeVisible = it },
                 )
             }

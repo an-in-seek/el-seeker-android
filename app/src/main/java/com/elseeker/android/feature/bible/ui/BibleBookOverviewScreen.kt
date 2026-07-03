@@ -26,9 +26,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -68,13 +66,12 @@ import com.elseeker.android.R
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.core.ui.openExternalUrl
-import com.elseeker.android.feature.bible.data.BookDetailDto
 import com.elseeker.android.feature.bible.ui.components.BibleBottomBar
 import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
 import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 
 /**
- * 책 개요 화면: 책 설명 요약 행(탭 → 전체 개요 다이얼로그) + 액션 버튼 4개(개요/듣기/퀴즈/메모)
+ * 책 개요 화면: 책 설명 요약 행(탭 → 개요 전체 화면) + 액션 버튼 4개(개요/듣기/퀴즈/메모)
  * + 장 번호 그리드 + 하단 책 전환 내비게이션. 웹 chapter-list 페이지와 동일한 구성(docs/view/chapter-list.jpg).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +82,7 @@ fun BibleBookOverviewScreen(
     onSelectBook: () -> Unit,
     onSwitchBook: (newBookOrder: Int) -> Unit,
     onOpenContent: (contentKey: String) -> Unit,
+    onOpenDescription: () -> Unit,
     onChangeTranslation: () -> Unit,
     onSearchClick: () -> Unit,
     onProfileClick: () -> Unit,
@@ -101,7 +99,6 @@ fun BibleBookOverviewScreen(
     // 전체 리로드로 스피너가 깜빡이고 스크롤 위치가 초기화되던 버그 수정.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshOnResume() }
 
-    var showDescriptionDialog by remember { mutableStateOf(false) }
     var showMemoDialog by remember { mutableStateOf(false) }
 
     val loginRequiredMsg = stringResource(R.string.bible_reader_login_required)
@@ -202,7 +199,7 @@ fun BibleBookOverviewScreen(
                     item(key = "description", span = { GridItemSpan(maxLineSpan) }) {
                         BookDescriptionRow(
                             summary = data.descriptionSummary,
-                            onClick = { showDescriptionDialog = true },
+                            onClick = onOpenDescription,
                         )
                     }
                 }
@@ -237,16 +234,6 @@ fun BibleBookOverviewScreen(
                 }
             }
         }
-    }
-
-    // 상세(detail)는 그리드보다 늦게 도착할 수 있다 — 도착 전 탭하면 플래그만 유지되다
-    // detail 이 채워지는 즉시 다이얼로그가 열린다.
-    val descriptionDetail = overview?.detail
-    if (showDescriptionDialog && descriptionDetail != null) {
-        BookDescriptionDialog(
-            detail = descriptionDetail,
-            onDismiss = { showDescriptionDialog = false },
-        )
     }
 
     if (showMemoDialog) {
@@ -366,52 +353,6 @@ private fun BookActionCell(
             color = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
         )
     }
-}
-
-/** 책 전체 개요(요약/저자/연대/배경) 다이얼로그 — 웹의 book-description 페이지를 시트로 대체. */
-@Composable
-private fun BookDescriptionDialog(detail: BookDetailDto, onDismiss: () -> Unit) {
-    val d = detail.description
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(detail.bookName) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                if (d.summary.isNotBlank()) {
-                    Text(
-                        text = d.summary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                val meta = buildList {
-                    if (d.author.isNotBlank()) add(stringResource(R.string.bible_book_overview_author, d.author))
-                    if (d.writtenYear.isNotBlank()) add(d.writtenYear)
-                    if (d.historicalPeriod.isNotBlank()) add(d.historicalPeriod)
-                }
-                if (meta.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = meta.joinToString(" · "),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (d.background.isNotBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = d.background,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            // 정보성 다이얼로그라 '취소'가 아닌 '닫기'로 표기한다.
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
-        },
-    )
 }
 
 /** 책 메모 다이얼로그 — 저장(신규/수정 공통 PUT)/삭제(기존 메모 있을 때만)/취소. */

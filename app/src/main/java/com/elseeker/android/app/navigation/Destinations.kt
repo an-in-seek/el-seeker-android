@@ -21,8 +21,12 @@ object Routes {
     const val BIBLE_BOOKS = "bible/books/{translationId}"
     const val BIBLE_READER = "bible/reader/{translationId}/{bookOrder}/{chapterNumber}"
     const val BIBLE_BOOK_OVERVIEW = "bible/book/{translationId}/{bookOrder}"
+    // 책 개요(요약·저자·년도·시대·배경·내용) 전용 화면 — 웹 book-description.html.
+    const val BIBLE_BOOK_DESCRIPTION = "bible/description/{translationId}/{bookOrder}"
 
     fun bibleBooks(translationId: Long) = "bible/books/$translationId"
+    fun bibleBookDescription(translationId: Long, bookOrder: Int) =
+        "bible/description/$translationId/$bookOrder"
     // keyword 는 홈 인기 검색어 → 검색 화면 프리필용 옵션 인자.
     const val BIBLE_SEARCH = "bible/search?keyword={keyword}"
 
