@@ -80,10 +80,16 @@ class BibleBookOverviewViewModel @Inject constructor(
     }
 
     fun load() {
-        _state.value = UiResource.Loading
         if (translationId <= 0L || bookOrder <= 0) {
             _state.value = UiResource.Error("잘못된 책입니다.", isNetwork = false)
             return
+        }
+        // 캐시(프리페치 포함)에 이미 있으면 Loading 없이 즉시 렌더 — 이전/다음 이동 시 스피너 깜빡임 제거.
+        val cached = repository.peekChapters(translationId, bookOrder)
+        _state.value = if (cached != null) {
+            UiResource.Success(cached.toBookOverview())
+        } else {
+            UiResource.Loading
         }
         viewModelScope.launch {
             // 장 목록(핵심)과 읽음 진도를 병렬로 조회한다.
@@ -96,14 +102,8 @@ class BibleBookOverviewViewModel @Inject constructor(
                 _state.value = it.toUiError()
                 return@launch
             }
-            _state.value = UiResource.Success(
-                BookOverview(
-                    bookName = chaptersDto.book.bookName,
-                    descriptionSummary = chaptersDto.book.descriptionSummary,
-                    chapters = chaptersDto.chapterNumbers(),
-                    readChapters = emptySet(),
-                )
-            )
+            // 캐시로 이미 동일 값이면 StateFlow 가 재방출하지 않아 불필요한 리컴포지션도 없다.
+            _state.value = UiResource.Success(chaptersDto.toBookOverview())
             // 인접 책(±1) 장 목록을 미리 캐시해 이전/다음 이동을 즉시 렌더한다.
             prefetchNeighbors()
 
@@ -179,3 +179,12 @@ class BibleBookOverviewViewModel @Inject constructor(
 /** ChaptersDto → 장 번호 목록. */
 private fun ChaptersDto.chapterNumbers(): List<Int> =
     book.chapters.map { it.chapterNumber }.sorted()
+
+/** ChaptersDto → 화면 모델(읽음 진도는 별도 로드라 빈 값으로 시작). */
+private fun ChaptersDto.toBookOverview(): BookOverview =
+    BookOverview(
+        bookName = book.bookName,
+        descriptionSummary = book.descriptionSummary,
+        chapters = chapterNumbers(),
+        readChapters = emptySet(),
+    )

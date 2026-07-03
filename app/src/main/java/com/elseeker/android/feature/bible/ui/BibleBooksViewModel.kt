@@ -53,7 +53,15 @@ class BibleBooksViewModel @Inject constructor(
             _state.value = UiResource.Error("잘못된 번역본입니다.", isNetwork = false)
             return
         }
-        _state.value = UiResource.Loading
+        // 책·번역본이 캐시에 있으면 Loading 없이 즉시 렌더(재진입 시 스피너 깜빡임 제거).
+        val cachedBooks = repository.peekBooks(translationId)
+        val cachedTranslation = repository.peekTranslations()?.firstOrNull { it.translationId == translationId }
+        val hasCache = cachedBooks != null
+        _state.value = if (cachedBooks != null) {
+            UiResource.Success(buildState(cachedBooks, cachedTranslation))
+        } else {
+            UiResource.Loading
+        }
         viewModelScope.launch {
             val booksDeferred = async { repository.books(translationId) }
             val translationsDeferred = async { repository.translations() }
@@ -64,18 +72,22 @@ class BibleBooksViewModel @Inject constructor(
                 .onSuccess { books ->
                     val translation = translationsResult.getOrNull()
                         ?.firstOrNull { it.translationId == translationId }
-                    _state.value = UiResource.Success(
-                        BibleBooksUiState(
-                            oldTestament = books.filter { it.testamentType == TESTAMENT_OLD },
-                            newTestament = books.filter { it.testamentType == TESTAMENT_NEW },
-                            translationName = translation?.translationName ?: "",
-                            translationType = translation?.translationType ?: "",
-                        )
-                    )
+                    _state.value = UiResource.Success(buildState(books, translation))
                 }
-                .onFailure { _state.value = it.toUiError() }
+                // 캐시로 이미 렌더 중이면 일시적 오류로 화면을 덮지 않는다.
+                .onFailure { if (!hasCache) _state.value = it.toUiError() }
         }
     }
+
+    private fun buildState(
+        books: List<BookDto>,
+        translation: com.elseeker.android.feature.bible.data.TranslationDto?,
+    ): BibleBooksUiState = BibleBooksUiState(
+        oldTestament = books.filter { it.testamentType == TESTAMENT_OLD },
+        newTestament = books.filter { it.testamentType == TESTAMENT_NEW },
+        translationName = translation?.translationName ?: "",
+        translationType = translation?.translationType ?: "",
+    )
 
     fun onQueryChange(value: String) {
         _query.value = value

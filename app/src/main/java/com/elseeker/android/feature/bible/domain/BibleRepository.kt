@@ -67,11 +67,21 @@ class BibleRepository @Inject constructor(
             .also { booksCache[translationId] = it }
     }
 
+    /** 인메모리 캐시된 번역본 목록을 동기로 즉시 반환(없으면 null). 로딩 스피너 깜빡임 방지용. */
+    fun peekTranslations(): List<TranslationDto>? = cachedTranslations
+
+    /** 인메모리 캐시된 책 목록을 동기로 즉시 반환(없으면 null). 로딩 스피너 깜빡임 방지용. */
+    fun peekBooks(translationId: Long): List<BookDto>? = booksCache[translationId]
+
     suspend fun chapters(translationId: Long, bookOrder: Int): Result<ChaptersDto> = runCatching {
         val key = "$translationId:$bookOrder"
         chaptersCache[key] ?: safeApiCall(json) { bibleApi.chapters(translationId, bookOrder) }
             .also { chaptersCache[key] = it }
     }
+
+    /** 인메모리 캐시에 이미 있는 장 목록을 동기로 즉시 반환(없으면 null). 로딩 스피너 깜빡임 방지용. */
+    fun peekChapters(translationId: Long, bookOrder: Int): ChaptersDto? =
+        chaptersCache["$translationId:$bookOrder"]
 
     /** 읽은 장 번호 목록(인증 필요). 실패해도 목록 화면을 막지 않도록 호출부에서 빈 목록 폴백. */
     suspend fun readChapters(translationId: Long, bookOrder: Int): Result<List<Int>> =

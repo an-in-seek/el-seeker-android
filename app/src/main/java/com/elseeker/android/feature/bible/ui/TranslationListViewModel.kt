@@ -28,11 +28,14 @@ class TranslationListViewModel @Inject constructor(
     init { load() }
 
     fun load() {
-        _state.value = UiResource.Loading
+        // 캐시에 있으면 Loading 없이 즉시 렌더(재진입 시 스피너 깜빡임 제거).
+        val cached = repository.peekTranslations()
+        _state.value = if (cached != null) UiResource.Success(cached) else UiResource.Loading
         viewModelScope.launch {
             repository.translations()
                 .onSuccess { _state.value = UiResource.Success(it) }
-                .onFailure { _state.value = it.toUiError() }
+                // 캐시로 이미 렌더 중이면 일시적 오류로 화면을 덮지 않는다.
+                .onFailure { if (cached == null) _state.value = it.toUiError() }
         }
     }
 }
