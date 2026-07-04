@@ -266,6 +266,8 @@ private fun SectionCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
+        // 웹 파리티: 패널 배경은 흰색(surface). 책 버튼색(surfaceContainerHigh)은 유지한다.
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

@@ -240,7 +240,7 @@ fun BibleReaderScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 4.dp),
                 ) {
                     // 타이틀은 웹처럼 콘텐츠와 함께 스크롤된다.
-                    // 첫 절 행의 상단 패딩(14dp)이 아래에 붙으므로 하단 패딩을 줄여 상하 균형을 맞춘다.
+                    // 첫 절 행의 상단 패딩(8dp)이 아래에 붙으므로 하단 패딩을 줄여 상하 균형을 맞춘다.
                     item(key = "page-title") { BiblePageTitle(text = title, bottomPadding = 2.dp) }
                     items(data.book.chapter.verses, key = { it.verseId }) { verse ->
                         val highlightColor = highlights[verse.verseNumber]?.let(::highlightColorOf)
@@ -267,7 +267,7 @@ fun BibleReaderScreen(
                                             selectedVerses + verse.verseNumber
                                         }
                                     }
-                                    .padding(horizontal = 4.dp, vertical = 14.dp),
+                                    .padding(horizontal = 4.dp, vertical = 8.dp),
                             ) {
                                 Text(
                                     text = "${verse.verseNumber}",

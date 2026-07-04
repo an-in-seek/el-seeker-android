@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,8 +29,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -45,8 +51,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -180,57 +188,51 @@ fun BibleBookOverviewScreen(
                 modifier = Modifier.fillMaxSize(),
             ) { data ->
                 LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                state = gridState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(nestedScrollConnection),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // 타이틀·설명·액션바도 웹처럼 콘텐츠와 함께 스크롤된다(full-span 헤더 아이템).
-                item(key = "page-title", span = { GridItemSpan(maxLineSpan) }) {
-                    // 아이템 간격(8dp)이 아래에 붙으므로 하단 패딩을 줄여 상하 균형(16dp)을 맞춘다.
-                    BiblePageTitle(pageTitle, bottomPadding = 8.dp)
-                }
-                // 요약이 비어 있으면(설명 미등록 책) 빈 보더 행을 그리지 않는다.
-                if (data.descriptionSummary.isNotBlank()) {
-                    item(key = "description", span = { GridItemSpan(maxLineSpan) }) {
-                        BookDescriptionRow(
+                    columns = GridCells.Fixed(4),
+                    state = gridState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // 타이틀·설명·액션바도 웹처럼 콘텐츠와 함께 스크롤된다(full-span 헤더 아이템).
+                    item(key = "page-title", span = { GridItemSpan(maxLineSpan) }) {
+                        // 아이템 간격(8dp)이 아래에 붙으므로 하단 패딩을 줄여 상하 균형(16dp)을 맞춘다.
+                        BiblePageTitle(pageTitle, bottomPadding = 8.dp)
+                    }
+                    // 설명 요약 + 액션바를 하나의 보더 카드로 일체화(웹 파리티) — 둘 사이에 간격 없이 밀착.
+                    item(key = "header-card", span = { GridItemSpan(maxLineSpan) }) {
+                        BookOverviewHeaderCard(
                             summary = data.descriptionSummary,
-                            onClick = onOpenDescription,
+                            hasMemo = bookMemo != null,
+                            onOpenDescription = onOpenDescription,
+                            onOverviewClick = { onOpenContent("overview-video") },
+                            onListenClick = { onOpenContent("public-reading") },
+                            onQuizClick = {
+                                openExternalUrl(
+                                    context,
+                                    BuildConfig.BASE_URL.trimEnd('/') + "/web/game/bible-ox-quiz/map",
+                                )
+                            },
+                            onMemoClick = {
+                                if (viewModel.hasAuthSession) {
+                                    showMemoDialog = true
+                                } else {
+                                    Toast.makeText(context, loginRequiredMsg, Toast.LENGTH_SHORT).show()
+                                }
+                            },
                         )
                     }
-                }
-                item(key = "actions", span = { GridItemSpan(maxLineSpan) }) {
-                    BookActionButtons(
-                        hasMemo = bookMemo != null,
-                        onOverviewClick = { onOpenContent("overview-video") },
-                        onListenClick = { onOpenContent("public-reading") },
-                        onQuizClick = {
-                            openExternalUrl(
-                                context,
-                                BuildConfig.BASE_URL.trimEnd('/') + "/web/game/bible-ox-quiz/map",
-                            )
-                        },
-                        onMemoClick = {
-                            if (viewModel.hasAuthSession) {
-                                showMemoDialog = true
-                            } else {
-                                Toast.makeText(context, loginRequiredMsg, Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                    )
-                }
-                items(data.chapters, key = { it }) { chapter ->
-                    ChapterCell(
-                        chapter = chapter,
-                        isRead = chapter in data.readChapters,
-                        readDesc = chapterReadDesc,
-                        onClick = { onChapterClick(chapter) },
-                    )
-                }
+                    items(data.chapters, key = { it }) { chapter ->
+                        ChapterCell(
+                            chapter = chapter,
+                            isRead = chapter in data.readChapters,
+                            readDesc = chapterReadDesc,
+                            onClick = { onChapterClick(chapter) },
+                        )
+                    }
                 }
             }
         }
@@ -250,14 +252,48 @@ fun BibleBookOverviewScreen(
 /** 스크롤 이벤트 1회당 상단바/하단 탭 표시 전환 임계값(px) — 책 목록 화면과 동일 기준. */
 private const val SCROLL_HIDE_THRESHOLD_PX = 3f
 
-/** 책 개요 요약 행 — 탭하면 전체 개요 다이얼로그를 연다. */
+/**
+ * 책 설명 요약 + 액션바(개요/듣기/퀴즈/메모)를 하나의 보더 카드로 묶는다(웹 파리티).
+ * 설명 행과 액션바가 간격 없이 밀착되고, 그 사이만 가로 구분선으로 나뉜다.
+ */
+@Composable
+private fun BookOverviewHeaderCard(
+    summary: String,
+    hasMemo: Boolean,
+    onOpenDescription: () -> Unit,
+    onOverviewClick: () -> Unit,
+    onListenClick: () -> Unit,
+    onQuizClick: () -> Unit,
+    onMemoClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+    ) {
+        if (summary.isNotBlank()) {
+            BookDescriptionRow(summary = summary, onClick = onOpenDescription)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        BookActionButtons(
+            hasMemo = hasMemo,
+            onOverviewClick = onOverviewClick,
+            onListenClick = onListenClick,
+            onQuizClick = onQuizClick,
+            onMemoClick = onMemoClick,
+        )
+    }
+}
+
+/** 책 개요 요약 행 — 탭하면 전체 개요 다이얼로그를 연다. 보더는 상위 카드가 담당한다. */
 @Composable
 private fun BookDescriptionRow(summary: String, onClick: () -> Unit) {
     val moreDesc = stringResource(R.string.bible_book_description_more_desc)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
             .clickable(onClickLabel = moreDesc, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -274,11 +310,16 @@ private fun BookDescriptionRow(summary: String, onClick: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp)),
+                .size(40.dp)
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "➡")
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -292,11 +333,15 @@ private fun BookActionButtons(
     onQuizClick: () -> Unit,
     onMemoClick: () -> Unit,
 ) {
+    // 액션 영역은 웹처럼 옅은 중립 회색 배경(설명 영역은 흰색). 다크 모드는 카드보다 살짝 밝은 톤.
+    val isLight = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+    val actionBackground = if (isLight) Color(0xFFF3F4F6) else Color(0xFF26282E)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+            // 세로 구분선이 풀하이트로 뻗도록 IntrinsicSize.Min 사용. 보더는 상위 카드가 담당한다.
+            .height(IntrinsicSize.Min)
+            .background(actionBackground),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BookActionCell(
@@ -305,21 +350,21 @@ private fun BookActionButtons(
             modifier = Modifier.weight(1f),
             onClick = onOverviewClick,
         )
-        VerticalDivider(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        VerticalDivider(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outlineVariant)
         BookActionCell(
             icon = "🎧",
             label = stringResource(R.string.bible_action_listen),
             modifier = Modifier.weight(1f),
             onClick = onListenClick,
         )
-        VerticalDivider(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        VerticalDivider(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outlineVariant)
         BookActionCell(
             icon = "🎮",
             label = stringResource(R.string.bible_action_quiz),
             modifier = Modifier.weight(1f),
             onClick = onQuizClick,
         )
-        VerticalDivider(modifier = Modifier.height(24.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        VerticalDivider(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outlineVariant)
         BookActionCell(
             icon = "📝",
             label = stringResource(R.string.bible_action_memo),
