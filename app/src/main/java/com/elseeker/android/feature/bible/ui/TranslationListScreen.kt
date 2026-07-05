@@ -31,7 +31,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elseeker.android.R
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.feature.bible.data.TranslationDto
-import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
 import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 
 /**
@@ -48,8 +47,7 @@ fun TranslationListScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
-        BibleTopBar(onProfileClick = onProfileClick)
-        BiblePageTitle(stringResource(R.string.bible_translation_title))
+        BibleTopBar(title = stringResource(R.string.bible_translation_title), onProfileClick = onProfileClick)
 
         ResourceContent(
             resource = state,
@@ -63,8 +61,8 @@ fun TranslationListScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                // 타이틀 자체 하단 여백(16dp)이 있으므로 top 패딩은 두지 않는다(상하 균형).
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                // 타이틀이 상단바로 이동했으므로 상단바와 첫 카드 사이 간격을 top 패딩으로 확보한다.
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 items(groups, key = { it.languageLabel }) { group ->

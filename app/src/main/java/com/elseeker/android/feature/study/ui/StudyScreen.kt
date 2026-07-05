@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.elseeker.android.R
-import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
 import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 import com.elseeker.android.feature.study.ui.content.StudyStaticContent
 
@@ -47,12 +46,12 @@ fun StudyScreen(
     onProfileClick: () -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        BibleTopBar(onProfileClick = onProfileClick)
-        BiblePageTitle(stringResource(R.string.study_title))
+        BibleTopBar(title = stringResource(R.string.study_title), onProfileClick = onProfileClick)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            // 타이틀이 상단바로 이동했으므로 상단바와 첫 카드 사이 간격을 top 패딩으로 확보한다.
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(studyMenu, key = { it.key }) { entry ->
