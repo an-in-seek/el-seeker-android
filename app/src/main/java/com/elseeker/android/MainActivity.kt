@@ -1,5 +1,6 @@
 package com.elseeker.android
 
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -96,6 +97,11 @@ class MainActivity : ComponentActivity() {
         )
 
         super.onCreate(savedInstanceState)
+
+        // 투명 내비바에 시스템이 덧씌우는 반투명(밝은) 대비 스크림 제거 — 하단 바를 순수 검정으로 유지.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
 
         credentialManager = CredentialManager.create(this)
         deepLinkManager.onUri(intent?.data)
