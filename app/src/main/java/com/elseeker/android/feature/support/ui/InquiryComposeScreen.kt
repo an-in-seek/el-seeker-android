@@ -79,7 +79,7 @@ fun InquiryComposeScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = 56.dp,
+                expandedHeight = 48.dp,
                 title = {
                     Text(
                         stringResource(

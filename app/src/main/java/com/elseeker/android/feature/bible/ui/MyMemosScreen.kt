@@ -52,7 +52,7 @@ fun MyMemosScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = 56.dp,
+                expandedHeight = 48.dp,
                 title = { Text(stringResource(R.string.my_memos_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

@@ -60,7 +60,7 @@ fun LinkedAccountsScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = 56.dp,
+                expandedHeight = 48.dp,
                 title = { Text(stringResource(R.string.my_linked_accounts_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

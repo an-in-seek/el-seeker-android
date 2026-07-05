@@ -48,7 +48,7 @@ fun BibleTopBar(
     onProfileClick: (() -> Unit)? = null,
 ) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceContainer) {
-        // 총 높이 56dp(버튼 40 + 상하 8) — 전통 툴바 표준이자 하단 탭(56dp)과 동일, 웹 헤더(52px) 근접.
+        // 총 높이 48dp(버튼 40 + 상하 4) — 컴팩트 앱바(Material 아이콘 터치 타깃 48dp 하한).
         Box(modifier = Modifier.fillMaxWidth()) {
             // 좌우에 컨트롤(뒤로/칩/검색/Aa)이 있으면 타이틀을 Row 중앙 가중치 슬롯에 인라인 배치하고,
             // 비어있는 바(홈/학습/번역본)면 화면 정중앙에 오버레이한다(아이콘과 겹치지 않도록).
@@ -71,7 +71,7 @@ fun BibleTopBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (onBack != null) {

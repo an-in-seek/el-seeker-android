@@ -84,7 +84,7 @@ fun InquiryDetailScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = 56.dp,
+                expandedHeight = 48.dp,
                 title = { Text(stringResource(R.string.support_inquiry_detail_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

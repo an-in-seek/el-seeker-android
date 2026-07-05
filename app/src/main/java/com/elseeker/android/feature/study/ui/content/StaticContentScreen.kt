@@ -54,7 +54,7 @@ fun StaticContentScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = 56.dp,
+                expandedHeight = 48.dp,
                 title = { Text(content?.title ?: stringResource(R.string.static_content_title_fallback)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
