@@ -2,14 +2,19 @@ package com.elseeker.android.app
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -27,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -54,8 +60,14 @@ fun AccountMenuSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        // 바텀시트는 별도 윈도우라 하단 내비바가 흰색으로 뜬다 — Activity 와 동일하게 검정으로 맞춘다.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        // 콘텐츠 자동 하단 인셋을 끄고, 내비바 영역은 아래 검정 Box 로 직접 채운다(Android 15+ 대응).
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+    ) {
+        // 바텀시트는 별도 윈도우라 하단 내비바가 흰색으로 뜬다.
+        // Android 14 이하는 윈도우 색으로, Android 15+ 는 색상 API 가 무시되므로 아래 검정 Box 로 맞춘다.
         ForceBlackNavigationBarInDialog()
         // 닫기는 드래그 핸들/스크림/스와이프로 처리한다(네이티브 관행) — 별도 × 버튼 미사용.
         Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp)) {
@@ -74,6 +86,13 @@ fun AccountMenuSheet(
                 AccountRow(stringResource(R.string.account_logout), onLogout)
             }
         }
+        // 하단 시스템 내비게이션 바 영역을 검정으로 채운다(시트가 그 뒤로 그리는 흰 배경을 덮음).
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                .background(Color.Black),
+        )
     }
 }
 
