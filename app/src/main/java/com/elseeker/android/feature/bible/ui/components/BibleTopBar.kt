@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
@@ -49,8 +50,12 @@ fun BibleTopBar(
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceContainer) {
         // 총 높이 56dp(버튼 40 + 상하 8) — 전통 툴바 표준이자 하단 탭(56dp)과 동일, 웹 헤더(52px) 근접.
         Box(modifier = Modifier.fillMaxWidth()) {
-            // 중앙 정렬 타이틀 — 좌우 아이콘 영역(≈52dp)을 피하도록 좌우 여백을 두어 광학 중앙 유지.
-            if (title != null) {
+            // 좌우에 컨트롤(뒤로/칩/검색/Aa)이 있으면 타이틀을 Row 중앙 가중치 슬롯에 인라인 배치하고,
+            // 비어있는 바(홈/학습/번역본)면 화면 정중앙에 오버레이한다(아이콘과 겹치지 않도록).
+            val inlineTitle = title != null &&
+                (onBack != null || translationCode != null || onSearchClick != null || onFontSizeClick != null)
+            // 오버레이 중앙 타이틀 — 좌우 아이콘 영역(≈52dp)을 피하도록 좌우 여백을 두어 광학 중앙 유지.
+            if (title != null && !inlineTitle) {
                 Text(
                     text = title,
                     modifier = Modifier
@@ -80,7 +85,23 @@ fun BibleTopBar(
                 if (translationCode != null && onChangeTranslation != null) {
                     TranslationChip(code = translationCode, onClick = onChangeTranslation)
                 }
-                Spacer(Modifier.weight(1f))
+                // 중앙 슬롯: 인라인 타이틀이면 가중치 중앙 텍스트(긴 이름은 말줄임), 아니면 우측 컨트롤을 미는 스페이서.
+                if (inlineTitle) {
+                    Text(
+                        text = title!!,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
                 if (onSearchClick != null) {
                     TopBarIconButton(
                         icon = Icons.Default.Search,

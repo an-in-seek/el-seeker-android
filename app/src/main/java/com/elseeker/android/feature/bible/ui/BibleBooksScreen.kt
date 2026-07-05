@@ -58,7 +58,6 @@ import com.elseeker.android.R
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.feature.bible.data.BookDto
-import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
 import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 
 /**
@@ -122,6 +121,7 @@ fun BibleBooksScreen(
             exit = shrinkVertically(),
         ) {
             BibleTopBar(
+                title = pageTitle,
                 translationCode = translationCode,
                 onChangeTranslation = onChangeTranslation,
                 onSearchClick = onSearchClick,
@@ -146,10 +146,7 @@ fun BibleBooksScreen(
             }
 
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                // 타이틀은 일반 콘텐츠라 스크롤과 함께 사라진다(웹 파리티).
-                // 검색창 자체 상단 여백(8dp)과 합쳐 타이틀-검색창 간격이 16dp 가 되도록 하단 패딩을 줄인다.
-                item(key = "page-title") { BiblePageTitle(pageTitle, bottomPadding = 8.dp) }
-
+                // 페이지 타이틀(번역본 이름)은 상단바 중앙 슬롯으로 이동 — 본문에는 검색 필드부터 배치한다.
                 // 검색 필드는 sticky — 상단바가 숨으면 화면 최상단에 붙는다(book-search.css top:52px↔0 파리티).
                 stickyHeader(key = "search") {
                     Surface(color = MaterialTheme.colorScheme.surface) {
