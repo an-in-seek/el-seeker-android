@@ -164,6 +164,11 @@ fun BibleReaderScreen(
     val currentOnChromeVisibleChange by rememberUpdatedState(onChromeVisibleChange)
     LaunchedEffect(chromeVisible) { currentOnChromeVisibleChange(chromeVisible) }
 
+    // 이전/다음으로 장이 바뀌면 목록을 맨 위(첫 절/타이틀)로 되돌린다(웹 verse-list 파리티).
+    LaunchedEffect(success?.data?.book?.chapter?.chapterId) {
+        listState.scrollToItem(0)
+    }
+
     val nestedScrollConnection = remember(listState) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {

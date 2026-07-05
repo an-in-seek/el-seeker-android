@@ -134,6 +134,11 @@
     <string name="bible_search_placeholder">절 내용 검색</string>
     <string name="bible_search_hint_initial">검색어를 입력하거나 인기 검색어를 선택하세요.</string>
     <string name="bible_search_hint_no_results">검색 결과가 없습니다.</string>
+    <string name="bible_search_popular">인기 검색어</string>
+    <string name="bible_search_more">더보기</string>
+    <string name="bible_search_less">접기</string>
+    <string name="bible_search_result_count">\"%1$s\"에 대한 결과 %2$s건</string>
+    <string name="bible_search_translation_desc">번역본 선택</string>
 
     <!-- Bible: book overview -->
     <string name="bible_book_overview_title_fallback">책 개요</string>
