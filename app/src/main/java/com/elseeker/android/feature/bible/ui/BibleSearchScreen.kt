@@ -39,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -120,6 +123,8 @@ fun BibleSearchScreen(
                 query = query,
                 onQueryChange = viewModel::onQueryChange,
                 onSearch = viewModel::search,
+                // 프리필 키워드로 진입 시에는 자동 포커스/키보드를 띄우지 않는다.
+                autoFocus = !viewModel.hasPrefillKeyword,
             )
             if (translations.isNotEmpty()) {
                 TranslationSelector(
@@ -183,7 +188,12 @@ private fun SearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
+    autoFocus: Boolean,
 ) {
+    // 화면 진입 시 검색 필드에 자동 포커스(소프트 키보드도 함께 노출).
+    // 단, 프리필 키워드로 진입한 경우엔 결과 위주라 포커스/키보드를 띄우지 않는다.
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { if (autoFocus) focusRequester.requestFocus() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -194,7 +204,9 @@ private fun SearchField(
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
             placeholder = { Text(stringResource(R.string.bible_search_placeholder)) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),

@@ -28,6 +28,9 @@ class BibleSearchViewModel @Inject constructor(
     // 홈 인기 검색어 등에서 전달된 초기 검색어(옵션).
     private val initialKeyword: String? = savedStateHandle.get<String>("keyword")
 
+    /** 프리필 키워드로 진입했는지 — 진입 시 검색창 자동 포커스 여부 판단에 사용(프리필이면 결과 위주라 포커스/키보드 생략). */
+    val hasPrefillKeyword: Boolean = !initialKeyword.isNullOrBlank()
+
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
