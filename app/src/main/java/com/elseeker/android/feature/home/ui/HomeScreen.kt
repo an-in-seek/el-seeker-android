@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.elseeker.android.BuildConfig
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.ForceBlackNavigationBarInDialog
 import com.elseeker.android.app.navigation.Routes
 import com.elseeker.android.core.ui.openExternalUrl
 import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
@@ -479,7 +480,7 @@ private fun PopularMoreDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontWeight = FontWeight.Bold) },
+        title = { ForceBlackNavigationBarInDialog(); Text(title, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 items.forEach { (rank, keyword) ->

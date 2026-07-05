@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.ForceBlackNavigationBarInDialog
 import com.elseeker.android.ui.theme.ThemeMode
 
 /**
@@ -54,6 +55,8 @@ fun AccountMenuSheet(
 ) {
     val sheetState = rememberModalBottomSheetState()
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        // 바텀시트는 별도 윈도우라 하단 내비바가 흰색으로 뜬다 — Activity 와 동일하게 검정으로 맞춘다.
+        ForceBlackNavigationBarInDialog()
         // 닫기는 드래그 핸들/스크림/스와이프로 처리한다(네이티브 관행) — 별도 × 버튼 미사용.
         Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp)) {
             if (loggedIn) {

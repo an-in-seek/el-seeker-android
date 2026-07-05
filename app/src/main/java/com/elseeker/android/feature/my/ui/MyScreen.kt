@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.ForceBlackNavigationBarInDialog
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.feature.auth.data.AuthMeResponse
 
@@ -118,7 +119,7 @@ fun MyScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.my_withdraw_dialog_title)) },
+            title = { ForceBlackNavigationBarInDialog(); Text(stringResource(R.string.my_withdraw_dialog_title)) },
             text = { Text(stringResource(R.string.my_withdraw_dialog_message)) },
             confirmButton = {
                 TextButton(onClick = {

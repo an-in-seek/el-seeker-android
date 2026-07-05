@@ -72,6 +72,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elseeker.android.BuildConfig
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.ForceBlackNavigationBarInDialog
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.core.ui.openExternalUrl
@@ -417,7 +418,7 @@ private fun BookMemoDialog(
     var content by remember { mutableStateOf(initialContent) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.bible_book_memo_title)) },
+        title = { ForceBlackNavigationBarInDialog(); Text(stringResource(R.string.bible_book_memo_title)) },
         text = {
             OutlinedTextField(
                 value = content,

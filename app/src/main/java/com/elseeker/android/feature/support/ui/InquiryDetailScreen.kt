@@ -40,6 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.ForceBlackNavigationBarInDialog
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.feature.support.data.InquiryDetailDto
 
@@ -109,7 +110,7 @@ fun InquiryDetailScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.support_inquiry_delete_confirm_title)) },
+            title = { ForceBlackNavigationBarInDialog(); Text(stringResource(R.string.support_inquiry_delete_confirm_title)) },
             text = { Text(stringResource(R.string.support_inquiry_delete_confirm_text)) },
             confirmButton = {
                 TextButton(onClick = {

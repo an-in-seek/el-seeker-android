@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elseeker.android.R
+import com.elseeker.android.core.ui.ForceBlackNavigationBarInDialog
 import com.elseeker.android.core.ui.ResourceContent
 import com.elseeker.android.core.ui.UiResource
 import com.elseeker.android.feature.bible.data.BibleReaderPrefs
@@ -718,7 +719,7 @@ private fun MemoDialog(
     var text by remember { mutableStateOf(initialContent) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontWeight = FontWeight.Bold) },
+        title = { ForceBlackNavigationBarInDialog(); Text(title, fontWeight = FontWeight.Bold) },
         text = {
             OutlinedTextField(
                 value = text,
