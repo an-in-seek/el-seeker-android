@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -39,15 +41,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elseeker.android.R
 import com.elseeker.android.core.ui.ResourceContent
-import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
 import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 import com.elseeker.android.feature.study.data.DictionaryItemDto
 import com.elseeker.android.feature.study.data.DictionaryRankingItemDto
@@ -83,8 +86,11 @@ fun DictionaryListScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        BibleTopBar(onBack = onBack, onProfileClick = onProfileClick)
-        BiblePageTitle(stringResource(R.string.dictionary_list_title))
+        BibleTopBar(
+            title = stringResource(R.string.dictionary_list_title),
+            onBack = onBack,
+            onProfileClick = onProfileClick,
+        )
 
         DictionarySearchField(
             query = query,
@@ -133,15 +139,23 @@ private fun DictionarySearchField(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
     TextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp),
         shape = RoundedCornerShape(12.dp),
         placeholder = { Text(stringResource(R.string.dictionary_list_search_placeholder)) },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                onSearch()
+                keyboardController?.hide()
+            },
+        ),
         trailingIcon = {
             IconButton(onClick = onSearch) {
                 Icon(Icons.Default.Search, contentDescription = stringResource(R.string.common_search))
