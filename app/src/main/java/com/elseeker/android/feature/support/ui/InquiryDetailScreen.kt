@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -82,6 +83,8 @@ fun InquiryDetailScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                expandedHeight = 56.dp,
                 title = { Text(stringResource(R.string.support_inquiry_detail_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

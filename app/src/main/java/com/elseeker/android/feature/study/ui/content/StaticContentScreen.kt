@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
 import com.elseeker.android.core.ui.openExternalUrl
@@ -52,6 +53,8 @@ fun StaticContentScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                expandedHeight = 56.dp,
                 title = { Text(content?.title ?: stringResource(R.string.static_content_title_fallback)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
