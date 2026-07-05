@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -150,6 +151,10 @@ fun BibleBookOverviewScreen(
 
     Scaffold(
         modifier = modifier,
+        // 바깥 MainScaffold 가 이미 시스템 바 인셋을 적용(padding(inner))하므로
+        // 이 내부 Scaffold 는 인셋을 0 으로 둔다 — 그러지 않으면 상태바 높이가 이중 적용되어
+        // 상단바(BibleTopBar) 위에 빈 여백이 생긴다(플랫 Column 을 쓰는 책/번역본 목록과 통일).
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             val bookOrder = viewModel.bookOrder.takeIf { overview != null }
             BibleBottomBar(

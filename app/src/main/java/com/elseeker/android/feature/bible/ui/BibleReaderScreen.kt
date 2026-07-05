@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -184,6 +185,9 @@ fun BibleReaderScreen(
 
     Scaffold(
         modifier = modifier,
+        // 바깥 MainScaffold 가 이미 시스템 바 인셋을 적용하므로 내부 Scaffold 는 인셋 0.
+        // (안 그러면 상태바 높이 이중 적용으로 상단바 위에 여백이 생긴다 — 장 개요 화면과 동일 수정.)
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (success != null) {
                 BibleBottomBar(
