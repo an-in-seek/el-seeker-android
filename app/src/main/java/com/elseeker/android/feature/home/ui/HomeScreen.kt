@@ -65,7 +65,6 @@ import com.elseeker.android.R
 import com.elseeker.android.core.ui.ForceBlackNavigationBarInDialog
 import com.elseeker.android.app.navigation.Routes
 import com.elseeker.android.core.ui.openExternalUrl
-import com.elseeker.android.feature.bible.ui.components.BiblePageTitle
 import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 import kotlinx.coroutines.delay
 
@@ -93,20 +92,16 @@ fun HomeScreen(
     var moreTarget by remember { mutableStateOf<PopularMoreTarget?>(null) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        BibleTopBar(onProfileClick = onProfileClick)
+        BibleTopBar(title = stringResource(R.string.home_title), onProfileClick = onProfileClick)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // 0) 페이지 타이틀 + 1) 히어로 캐러셀(풀블리드) — 한 아이템으로 묶어
-            // 아이템 간격(16dp)이 타이틀 아래에만 추가로 붙는 상하 여백 불균형을 없앤다.
+            // 1) 히어로 캐러셀(풀블리드) — 타이틀이 상단바로 이동해 상단바 바로 아래 풀블리드.
             item {
-                Column {
-                    BiblePageTitle(stringResource(R.string.home_title))
-                    HeroCarousel(baseUrl = baseUrl, onCta = { onNavigate(Routes.BIBLE) })
-                }
+                HeroCarousel(baseUrl = baseUrl, onCta = { onNavigate(Routes.BIBLE) })
             }
 
             // 2) 통합 검색바 (home-unified-search) — v1 은 성경 절 검색으로 위임.

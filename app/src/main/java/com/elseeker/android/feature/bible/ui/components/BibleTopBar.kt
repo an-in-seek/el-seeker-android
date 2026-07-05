@@ -1,6 +1,7 @@
 package com.elseeker.android.feature.bible.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.elseeker.android.R
@@ -30,11 +32,13 @@ import com.elseeker.android.R
 /**
  * 성경 4단계 화면 공용 상단바(웹 모바일 헤더 파리티 — `docs/view` 스크린샷 기준).
  * 연한 회색 바 위에 흰색 라운드 사각 버튼들: [뒤로] [KRV ▼] ... [검색] [Aa] [프로필].
- * 페이지 타이틀은 이 바에 넣지 않고 본문 상단 중앙에 [BiblePageTitle] 로 표시한다.
+ * [title] 을 주면 M3 CenterAlignedTopAppBar 처럼 바 중앙에 화면/브랜드 타이틀을 고정 노출한다
+ * (홈 탭부터 적용 중 — 미지정 시 종전처럼 본문 [BiblePageTitle] 로 표시).
  */
 @Composable
 fun BibleTopBar(
     modifier: Modifier = Modifier,
+    title: String? = null,
     onBack: (() -> Unit)? = null,
     translationCode: String? = null,
     onChangeTranslation: (() -> Unit)? = null,
@@ -44,49 +48,65 @@ fun BibleTopBar(
 ) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceContainer) {
         // 총 높이 56dp(버튼 40 + 상하 8) — 전통 툴바 표준이자 하단 탭(56dp)과 동일, 웹 헤더(52px) 근접.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (onBack != null) {
-                TopBarIconButton(
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
-                    onClick = onBack,
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // 중앙 정렬 타이틀 — 좌우 아이콘 영역(≈52dp)을 피하도록 좌우 여백을 두어 광학 중앙 유지.
+            if (title != null) {
+                Text(
+                    text = title,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 56.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
                 )
-                Spacer(Modifier.width(8.dp))
             }
-            if (translationCode != null && onChangeTranslation != null) {
-                TranslationChip(code = translationCode, onClick = onChangeTranslation)
-            }
-            Spacer(Modifier.weight(1f))
-            if (onSearchClick != null) {
-                TopBarIconButton(
-                    icon = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.bible_topbar_search),
-                    onClick = onSearchClick,
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            if (onFontSizeClick != null) {
-                TopBarBox(onClick = onFontSizeClick) {
-                    Text(
-                        text = stringResource(R.string.bible_topbar_font_size_label),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onBack != null) {
+                    TopBarIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.common_back),
+                        onClick = onBack,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (translationCode != null && onChangeTranslation != null) {
+                    TranslationChip(code = translationCode, onClick = onChangeTranslation)
+                }
+                Spacer(Modifier.weight(1f))
+                if (onSearchClick != null) {
+                    TopBarIconButton(
+                        icon = Icons.Default.Search,
+                        contentDescription = stringResource(R.string.bible_topbar_search),
+                        onClick = onSearchClick,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (onFontSizeClick != null) {
+                    TopBarBox(onClick = onFontSizeClick) {
+                        Text(
+                            text = stringResource(R.string.bible_topbar_font_size_label),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (onProfileClick != null) {
+                    TopBarIconButton(
+                        icon = Icons.Default.Person,
+                        contentDescription = stringResource(R.string.bible_topbar_profile),
+                        onClick = onProfileClick,
                     )
                 }
-                Spacer(Modifier.width(8.dp))
-            }
-            if (onProfileClick != null) {
-                TopBarIconButton(
-                    icon = Icons.Default.Person,
-                    contentDescription = stringResource(R.string.bible_topbar_profile),
-                    onClick = onProfileClick,
-                )
             }
         }
     }
