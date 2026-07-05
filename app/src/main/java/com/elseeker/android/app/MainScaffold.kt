@@ -68,6 +68,7 @@ import androidx.navigation.navArgument
 import com.elseeker.android.app.navigation.Routes
 import com.elseeker.android.app.navigation.TopLevelDestination
 import com.elseeker.android.core.auth.AuthState
+import com.elseeker.android.core.ui.LoadingBox
 import com.elseeker.android.feature.auth.ui.LoginScreen
 import com.elseeker.android.feature.bible.ui.BibleBookOverviewScreen
 import com.elseeker.android.feature.bible.ui.BibleBooksScreen
@@ -271,14 +272,28 @@ fun MainScaffold(
                 )
             }
             composable(Routes.MY) {
+                // 게스트로 로그인 화면에 진입한 뒤 로그인 성공(→Authenticated)하면
+                // 이전 화면으로 복귀한다(백스택에 없으면 홈). MyScreen 은 표시하지 않는다.
+                val cameForLogin = remember { authState != AuthState.Authenticated }
+                LaunchedEffect(authState) {
+                    if (cameForLogin && authState == AuthState.Authenticated) {
+                        if (!navController.popBackStack()) navigateRoute(Routes.HOME)
+                    }
+                }
                 when (authState) {
-                    AuthState.Authenticated -> MyScreen(
-                        onLoggedOut = onLoggedOut,
-                        onOpenProfileEdit = { navController.navigate(Routes.MY_PROFILE_EDIT) },
-                        onOpenLinkedAccounts = { navController.navigate(Routes.MY_LINKED_ACCOUNTS) },
-                        onOpenInquiries = { navController.navigate(Routes.SUPPORT_INQUIRIES) },
-                        onOpenMyMemos = { navController.navigate(Routes.MY_MEMOS) },
-                    )
+                    // 게스트 로그인 성공 직후: 복귀 처리 중이라 MyScreen 깜빡임 없이 로딩만 표시.
+                    AuthState.Authenticated ->
+                        if (cameForLogin) {
+                            LoadingBox()
+                        } else {
+                            MyScreen(
+                                onLoggedOut = onLoggedOut,
+                                onOpenProfileEdit = { navController.navigate(Routes.MY_PROFILE_EDIT) },
+                                onOpenLinkedAccounts = { navController.navigate(Routes.MY_LINKED_ACCOUNTS) },
+                                onOpenInquiries = { navController.navigate(Routes.SUPPORT_INQUIRIES) },
+                                onOpenMyMemos = { navController.navigate(Routes.MY_MEMOS) },
+                            )
+                        }
                     // 토큰은 있으나 세션 복원이 네트워크로 보류된 상태 — 로그인 화면 대신 재시도.
                     AuthState.Offline -> OfflineScreen(onRetry = onRetrySession)
                     // 게스트: 웹 /web/auth/login 과 동일한 로그인 화면. '둘러보기' → 홈 탭.
@@ -486,7 +501,8 @@ fun MainScaffold(
                 loggedIn = authState == AuthState.Authenticated,
                 themeMode = themeMode,
                 onSelectTheme = themeViewModel::setMode,
-                onLogin = { showAccountSheet = false; navigateRoute(Routes.MY) },
+                // 로그인은 현재 화면 위에 push(이전 화면 보존) → 로그인 성공 시 그 화면으로 복귀한다.
+                onLogin = { showAccountSheet = false; navController.navigate(Routes.MY) { launchSingleTop = true } },
                 onMyPage = { showAccountSheet = false; navigateRoute(Routes.MY) },
                 onMyMemos = { showAccountSheet = false; navController.navigate(Routes.MY_MEMOS) },
                 onInquiries = { showAccountSheet = false; navController.navigate(Routes.SUPPORT_INQUIRIES) },
