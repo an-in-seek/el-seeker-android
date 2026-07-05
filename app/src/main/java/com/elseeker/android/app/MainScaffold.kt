@@ -83,6 +83,7 @@ import com.elseeker.android.feature.my.ui.ProfileEditScreen
 import com.elseeker.android.feature.study.ui.DictionaryDetailScreen
 import com.elseeker.android.feature.study.ui.DictionaryListScreen
 import com.elseeker.android.feature.study.ui.StudyScreen
+import com.elseeker.android.feature.study.ui.content.CreationExperienceScreen
 import com.elseeker.android.feature.study.ui.content.StaticContentScreen
 import com.elseeker.android.feature.support.ui.InquiryComposeScreen
 import com.elseeker.android.feature.support.ui.InquiryDetailScreen
@@ -355,10 +356,19 @@ fun MainScaffold(
                 route = Routes.STUDY_CONTENT,
                 arguments = listOf(navArgument("contentKey") { type = NavType.StringType }),
             ) { entry ->
-                StaticContentScreen(
-                    contentKey = entry.arguments?.getString("contentKey").orEmpty(),
-                    onBack = { navController.popBackStack() },
-                )
+                val key = entry.arguments?.getString("contentKey").orEmpty()
+                // "7일 창조 체험"(creation)은 전용 몰입형 화면, 나머지는 범용 렌더러.
+                if (key == "creation") {
+                    CreationExperienceScreen(
+                        onBack = { navController.popBackStack() },
+                        onReadBible = { navigateRoute(Routes.BIBLE) },
+                    )
+                } else {
+                    StaticContentScreen(
+                        contentKey = key,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
             }
 
             composable(

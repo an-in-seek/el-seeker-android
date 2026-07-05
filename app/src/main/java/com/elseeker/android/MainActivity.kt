@@ -31,8 +31,20 @@ import com.elseeker.android.feature.auth.ui.AuthViewModel
 import com.elseeker.android.ui.theme.ElSeekerTheme
 import com.elseeker.android.ui.theme.ThemeManager
 import com.elseeker.android.ui.theme.ThemeMode
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
@@ -75,9 +87,12 @@ class MainActivity : ComponentActivity() {
             appViewModel.authState.value == AuthState.Unknown
         }
 
+        // 시스템 바를 항상 검정 배경 + 흰색 아이콘으로 고정한다.
+        // edge-to-edge 에서 바 자체는 투명이라, 실제 검정은 아래 setContent 의 인셋 스크림이 그린다.
+        // SystemBarStyle.dark(BLACK) 는 아이콘을 밝게(흰색) 강제 + 레거시/3버튼 내비 스크림을 검정으로 준다.
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.BLACK),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.BLACK),
         )
 
         super.onCreate(savedInstanceState)
@@ -95,11 +110,29 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             ElSeekerTheme(darkTheme = darkTheme) {
-                ElSeekerApp(
-                    appViewModel = appViewModel,
-                    authViewModel = authViewModel,
-                    onSocialLogin = ::startSocialLogin,
-                )
+                Box(Modifier.fillMaxSize()) {
+                    ElSeekerApp(
+                        appViewModel = appViewModel,
+                        authViewModel = authViewModel,
+                        onSocialLogin = ::startSocialLogin,
+                    )
+                    // 시스템 바 영역을 항상 검정으로 덮는다(edge-to-edge 투명 바 뒤 배경).
+                    // 시스템 바 아이콘은 이 스크림 위에 렌더되므로 흰색 아이콘이 그대로 보인다.
+                    Box(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .windowInsetsTopHeight(WindowInsets.statusBars)
+                            .background(Color.Black),
+                    )
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                            .background(Color.Black),
+                    )
+                }
             }
         }
     }
