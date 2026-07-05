@@ -88,8 +88,6 @@ fun BibleBooksScreen(
 
     val translationCode = (state as? UiResource.Success)?.data?.translationType
         ?.takeIf { it.isNotBlank() }
-    val pageTitle = (state as? UiResource.Success)?.data?.translationName
-        ?.takeIf { it.isNotBlank() } ?: stringResource(R.string.bible_books_title)
 
     // 스크롤 방향에 따른 상단바/하단 탭 표시 상태(웹 top-nav-hidden/bottom-tab-hidden 파리티).
     val listState = rememberLazyListState()
@@ -121,8 +119,8 @@ fun BibleBooksScreen(
             enter = expandVertically(),
             exit = shrinkVertically(),
         ) {
+            // 좌측 KRV ▼ 칩이 이미 현재 번역본을 나타내므로 중앙 타이틀은 생략한다(중복 방지).
             BibleTopBar(
-                title = pageTitle,
                 onBack = onBack,
                 translationCode = translationCode,
                 onChangeTranslation = onChangeTranslation,

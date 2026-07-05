@@ -116,21 +116,27 @@ fun MainScaffold(
     var showAccountSheet by remember { mutableStateOf(false) }
     val themeViewModel: ThemeViewModel = hiltViewModel()
 
-    // 성경 책/장 목록 화면은 하단 탭을 기본 노출하되 스크롤 방향에 따라 숨김/표시한다(웹 bottom-tab-hidden 파리티).
+    // 성경 개요/본문 화면은 하단 탭을 기본 노출하되 스크롤 방향에 따라 숨김/표시한다(웹 bottom-tab-hidden 파리티).
     var bibleChromeVisible by remember { mutableStateOf(true) }
     LaunchedEffect(currentRoute) { bibleChromeVisible = true }
     val bibleChromeRoutes = setOf(
-        Routes.BIBLE_BOOKS,
         Routes.BIBLE_BOOK_OVERVIEW,
         Routes.BIBLE_BOOK_DESCRIPTION,
         Routes.BIBLE_READER,
+    )
+    // 성경 브라우징·검색 진입부(번역본 목록·책 목록·구절 검색)는 몰입형이라 하단 탭을 항상 숨긴다.
+    val hideBottomBarRoutes = setOf(
+        Routes.BIBLE,
+        Routes.BIBLE_BOOKS,
+        Routes.BIBLE_SEARCH,
     )
     // 마이 탭이지만 게스트라 로그인 화면이 뜨는 경우엔 하단 탭을 숨긴다(웹 로그인 파리티).
     val isGuestLoginScreen = currentRoute == Routes.MY &&
         authState != AuthState.Authenticated && authState != AuthState.Offline
     val showBottomBar = (isTopLevelRoute ||
         (currentRoute in bibleChromeRoutes && bibleChromeVisible)) &&
-        !isGuestLoginScreen
+        !isGuestLoginScreen &&
+        currentRoute !in hideBottomBarRoutes
 
     // App Links 로 보류된 라우트를 인증 완료(이 화면 진입) 후 1회 네비게이션한다.
     LaunchedEffect(pendingDeepLink) {
@@ -235,6 +241,8 @@ fun MainScaffold(
                     onTranslationClick = { translationId ->
                         navController.navigate(Routes.bibleBooks(translationId))
                     },
+                    // back 은 이전 화면으로 복귀한다.
+                    onBack = { navController.popBackStack() },
                     onProfileClick = openAccountSheet,
                 )
             }

@@ -40,6 +40,7 @@ import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 @Composable
 fun TranslationListScreen(
     onTranslationClick: (Long) -> Unit,
+    onBack: () -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TranslationListViewModel = hiltViewModel(),
@@ -47,7 +48,11 @@ fun TranslationListScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
-        BibleTopBar(title = stringResource(R.string.bible_translation_title), onProfileClick = onProfileClick)
+        BibleTopBar(
+            title = stringResource(R.string.bible_translation_title),
+            onBack = onBack,
+            onProfileClick = onProfileClick,
+        )
 
         ResourceContent(
             resource = state,
