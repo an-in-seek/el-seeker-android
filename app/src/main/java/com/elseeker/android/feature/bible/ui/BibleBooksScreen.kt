@@ -73,6 +73,7 @@ import com.elseeker.android.feature.bible.ui.components.BibleTopBar
 @Composable
 fun BibleBooksScreen(
     onBookClick: (translationId: Long, bookOrder: Int) -> Unit,
+    onBack: () -> Unit,
     onChangeTranslation: () -> Unit,
     onSearchClick: () -> Unit,
     onProfileClick: () -> Unit,
@@ -122,6 +123,7 @@ fun BibleBooksScreen(
         ) {
             BibleTopBar(
                 title = pageTitle,
+                onBack = onBack,
                 translationCode = translationCode,
                 onChangeTranslation = onChangeTranslation,
                 onSearchClick = onSearchClick,

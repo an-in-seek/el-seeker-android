@@ -246,6 +246,7 @@ fun MainScaffold(
                     onBookClick = { translationId, bookOrder ->
                         navController.navigate(Routes.bibleBookOverview(translationId, bookOrder))
                     },
+                    onBack = { navController.popBackStack() },
                     onChangeTranslation = openTranslationList,
                     onSearchClick = openBibleSearch,
                     onProfileClick = openAccountSheet,

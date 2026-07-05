@@ -50,22 +50,25 @@ fun BibleTopBar(
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceContainer) {
         // 총 높이 48dp(버튼 40 + 상하 4) — 컴팩트 앱바(Material 아이콘 터치 타깃 48dp 하한).
         Box(modifier = Modifier.fillMaxWidth()) {
-            // 좌우에 컨트롤(뒤로/칩/검색/Aa)이 있으면 타이틀을 Row 중앙 가중치 슬롯에 인라인 배치하고,
-            // 비어있는 바(홈/학습/번역본)면 화면 정중앙에 오버레이한다(아이콘과 겹치지 않도록).
-            val inlineTitle = title != null &&
-                (onBack != null || translationCode != null || onSearchClick != null || onFontSizeClick != null)
-            // 오버레이 중앙 타이틀 — 좌우 아이콘 영역(≈52dp)을 피하도록 좌우 여백을 두어 광학 중앙 유지.
-            if (title != null && !inlineTitle) {
+            // 중앙 정렬 타이틀 — 바 정중앙 고정(M3 CenterAlignedTopAppBar 파리티).
+            // 좌(뒤로/칩)·우(검색/Aa/프로필) 컨트롤 중 넓은 쪽만큼 좌우 대칭 여백을 둬서
+            // 어느 쪽과도 겹치지 않으면서 텍스트가 바 정중앙에 오게 한다. 긴 이름은 말줄임.
+            if (title != null) {
+                val leftReserve = (if (onBack != null) 48 else 0) +
+                    (if (translationCode != null) 74 else 0)
+                val rightReserve = listOf(onSearchClick, onFontSizeClick, onProfileClick)
+                    .count { it != null } * 48
                 Text(
                     text = title,
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .padding(horizontal = 56.dp),
+                        .padding(horizontal = (12 + maxOf(leftReserve, rightReserve)).dp),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Row(
@@ -85,23 +88,8 @@ fun BibleTopBar(
                 if (translationCode != null && onChangeTranslation != null) {
                     TranslationChip(code = translationCode, onClick = onChangeTranslation)
                 }
-                // 중앙 슬롯: 인라인 타이틀이면 가중치 중앙 텍스트(긴 이름은 말줄임), 아니면 우측 컨트롤을 미는 스페이서.
-                if (inlineTitle) {
-                    Text(
-                        text = title!!,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
+                // 타이틀은 상단 오버레이로 바 정중앙에 그려지므로, Row 는 좌/우 컨트롤만 배치한다.
+                Spacer(Modifier.weight(1f))
                 if (onSearchClick != null) {
                     TopBarIconButton(
                         icon = Icons.Default.Search,
