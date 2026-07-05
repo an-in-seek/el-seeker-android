@@ -78,9 +78,7 @@ import com.elseeker.android.feature.bible.ui.BookDescriptionScreen
 import com.elseeker.android.feature.bible.ui.BibleSearchScreen
 import com.elseeker.android.feature.bible.ui.MyMemosScreen
 import com.elseeker.android.feature.home.ui.HomeScreen
-import com.elseeker.android.feature.my.ui.LinkedAccountsScreen
 import com.elseeker.android.feature.my.ui.MyScreen
-import com.elseeker.android.feature.my.ui.ProfileEditScreen
 import com.elseeker.android.feature.study.ui.DictionaryDetailScreen
 import com.elseeker.android.feature.study.ui.DictionaryListScreen
 import com.elseeker.android.feature.study.ui.StudyScreen
@@ -288,8 +286,6 @@ fun MainScaffold(
                         } else {
                             MyScreen(
                                 onLoggedOut = onLoggedOut,
-                                onOpenProfileEdit = { navController.navigate(Routes.MY_PROFILE_EDIT) },
-                                onOpenLinkedAccounts = { navController.navigate(Routes.MY_LINKED_ACCOUNTS) },
                                 onOpenInquiries = { navController.navigate(Routes.SUPPORT_INQUIRIES) },
                                 onOpenMyMemos = { navController.navigate(Routes.MY_MEMOS) },
                             )
@@ -305,16 +301,7 @@ fun MainScaffold(
                 }
             }
 
-            // 마이 하위 화면
-            composable(Routes.MY_PROFILE_EDIT) {
-                ProfileEditScreen(
-                    onBack = { navController.popBackStack() },
-                    onSaved = { navController.popBackStack() },
-                )
-            }
-            composable(Routes.MY_LINKED_ACCOUNTS) {
-                LinkedAccountsScreen(onBack = { navController.popBackStack() })
-            }
+            // 마이 하위 화면(프로필 수정·연동 계정은 마이 화면에 인라인 통합 — 웹 mypage 파리티)
             composable(Routes.MY_MEMOS) {
                 MyMemosScreen(onBack = { navController.popBackStack() })
             }

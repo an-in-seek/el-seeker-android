@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,7 +61,9 @@ fun AccountMenuSheet(
     onLogout: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    // 메뉴형 시트라 항상 전체가 보여야 한다 — 절반 높이(부분 확장) 단계를 건너뛰어
+    // 콘텐츠가 길어도 처음부터 완전히 펼쳐 로그아웃 등 하단 항목이 잘리지 않게 한다.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -70,7 +74,13 @@ fun AccountMenuSheet(
         // Android 14 이하는 윈도우 색으로, Android 15+ 는 색상 API 가 무시되므로 아래 검정 Box 로 맞춘다.
         ForceBlackNavigationBarInDialog()
         // 닫기는 드래그 핸들/스크림/스와이프로 처리한다(네이티브 관행) — 별도 × 버튼 미사용.
-        Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp)) {
+        // 초소형 기기·테마 펼침 등으로 콘텐츠가 시트 최대 높이를 넘으면 내부 스크롤로 전체 항목 접근을 보장한다.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(top = 8.dp, bottom = 20.dp),
+        ) {
             if (loggedIn) {
                 AccountRow(stringResource(R.string.account_mypage), onMyPage)
                 AccountRow(stringResource(R.string.account_my_memos), onMyMemos)

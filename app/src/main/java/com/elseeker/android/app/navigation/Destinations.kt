@@ -62,9 +62,7 @@ object Routes {
     fun supportInquiryDetail(id: Long) = "support/inquiries/$id"
     fun supportInquiryEdit(id: Long) = "support/inquiry-edit/$id"
 
-    // 마이 하위 라우트 (마이 탭에서 push)
-    const val MY_PROFILE_EDIT = "my/profile-edit"
-    const val MY_LINKED_ACCOUNTS = "my/linked-accounts"
+    // 마이 하위 라우트 (마이 탭에서 push). 프로필 수정·연동 계정은 마이 화면에 인라인 통합됨.
     const val MY_MEMOS = "my/memos"
 }
 
