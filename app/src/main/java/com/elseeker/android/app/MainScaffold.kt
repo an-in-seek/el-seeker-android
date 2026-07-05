@@ -220,9 +220,10 @@ fun MainScaffold(
         val openBibleSearch: () -> Unit = { navController.navigate(Routes.bibleSearch()) }
         // 프로필 아이콘 → 계정 메뉴 바텀시트(웹 account-menu 파리티).
         val openAccountSheet: () -> Unit = { showAccountSheet = true }
-        // KRV ▼ 칩: 번역본 목록(성경 탭 루트)으로 복귀. 백스택에 없으면 탭 전환으로 폴백.
+        // KRV ▼ 칩: 번역본 목록을 현재 화면 위에 push 한다(백스택 보존).
+        // 스택을 걷어내면 back 이 직전 성경 화면이 아닌 홈으로 붕괴되므로, 역순 내비게이션(모범사례)을 위해 push 한다.
         val openTranslationList: () -> Unit = {
-            if (!navController.popBackStack(Routes.BIBLE, false)) navigateRoute(Routes.BIBLE)
+            navController.navigate(Routes.BIBLE) { launchSingleTop = true }
         }
 
         NavHost(
@@ -241,8 +242,8 @@ fun MainScaffold(
                     onTranslationClick = { translationId ->
                         navController.navigate(Routes.bibleBooks(translationId))
                     },
-                    // back 은 이전 화면으로 복귀한다.
-                    onBack = { navController.popBackStack() },
+                    // back 은 백스택을 한 단계 되돌려 직전 화면으로 복귀한다(모범사례 Up 내비게이션).
+                    onBack = { navController.navigateUp() },
                     onProfileClick = openAccountSheet,
                 )
             }
