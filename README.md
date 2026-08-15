@@ -63,6 +63,10 @@ app/src/main/java/com/elseeker/android/
 - JDK 17+
 - Android Studio Ladybug 이상 권장
 
+> Gradle wrapper(`gradlew`, `gradle-wrapper.jar`)는 저장소에 커밋되어 있지 않습니다.
+> Android Studio로 프로젝트를 한 번 열면 자동 생성되며, 그 전에는 로컬 Gradle 8.7+ 로
+> `./` 없이(`gradle assembleDebug`) 실행해야 합니다.
+
 ### 빌드 명령
 
 ```bash

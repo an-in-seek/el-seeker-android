@@ -8,6 +8,8 @@ ElSeeker is an Android app that wraps the ElSeeker web service (elseeker.com) â€
 
 ## Build Commands
 
+**The Gradle wrapper is not committed** â€” `gradlew`, `gradlew.bat`, and `gradle/wrapper/gradle-wrapper.jar` are absent from a fresh clone (only `gradle-wrapper.properties` is tracked). Android Studio generates them on first project sync. Until then, use a local Gradle 8.7+ installation and drop the `./` prefix (`gradle assembleDebug`).
+
 ```bash
 # Debug build (uses https://elseeker.com as BASE_URL)
 ./gradlew assembleDebug
